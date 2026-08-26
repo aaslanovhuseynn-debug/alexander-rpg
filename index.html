@@ -3,227 +3,173 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр — Beta 8</title>
+<title>Александр RPG — Beta 10</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090b12;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none;overscroll-behavior:none}
-body{position:fixed;inset:0}
-canvas{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none}
-#rotate{position:fixed;inset:0;z-index:100;background:#090b12;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;font-size:22px}
-#hud{position:fixed;z-index:20;left:12px;top:max(9px,env(safe-area-inset-top));font-size:13px;text-shadow:2px 2px #000}
-.bar{width:170px;height:11px;border:1px solid #aaa;background:#111b;border-radius:3px;overflow:hidden}.fill{height:100%}.hp{background:#a82d3b}.xp{background:#a88a2b}
-#title{position:fixed;z-index:20;right:12px;top:max(9px,env(safe-area-inset-top));padding:7px 10px;background:#090b12c9;border:1px solid #566070;border-radius:4px;font-size:12px}
-#msg{position:fixed;z-index:20;left:50%;top:15%;transform:translateX(-50%);padding:7px 12px;background:#090b12dd;border:1px solid #566070;border-radius:4px;font-size:13px;pointer-events:none}
-#joy{position:fixed;z-index:30;left:22px;bottom:clamp(22px,9vh,70px);width:126px;height:126px;border-radius:50%;background:#101722aa;border:2px solid #667080;touch-action:none}
-#knob{position:absolute;left:38px;top:38px;width:48px;height:48px;border-radius:50%;background:#9aa4b044;border:2px solid #aab4c0;pointer-events:none}
-.btn{position:fixed;z-index:30;width:78px;height:78px;border-radius:5px;border:2px solid #788391;color:#fff;font-size:27px;touch-action:none;box-shadow:0 3px 0 #05070a}
-#attack{right:22px;bottom:clamp(35px,10vh,78px);background:#5a2028dd}
-#earth{right:115px;bottom:clamp(25px,6vh,50px);background:#4b3b25dd}
-#hint{position:fixed;z-index:20;right:205px;bottom:clamp(38px,8vh,65px);font-size:10px;background:#090b12b8;padding:5px;border:1px solid #566070}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}
+#hud{position:fixed;z-index:20;left:10px;top:max(8px,env(safe-area-inset-top));padding:9px 11px;background:#07100ddd;border:1px solid #c8d3c288;border-radius:12px;font-size:12px;line-height:1.45;text-shadow:1px 1px #000;pointer-events:none}
+#title{position:fixed;z-index:20;right:10px;top:max(8px,env(safe-area-inset-top));padding:8px 11px;background:#07100ddd;border:1px solid #c8d3c288;border-radius:12px;font-weight:900;font-size:12px;pointer-events:none}
+#quest{position:fixed;z-index:20;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);padding:8px 12px;background:#07100ddd;border:1px solid #d4c47b99;border-radius:12px;font-size:12px;font-weight:900;pointer-events:none;white-space:nowrap}
+#buttons{position:fixed;z-index:30;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:min(250px,43vw)}
+button{border:1px solid #c8d3c2;background:#172219ed;color:#fff;border-radius:14px;padding:11px 8px;font-weight:900;font-size:12px;box-shadow:0 6px 16px #0009}
+button:active{transform:scale(.95);background:#41553f}
+#joy{position:fixed;z-index:30;left:14px;bottom:max(14px,env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;border:2px solid #c7d4c055;background:#07100b88}
+#knob{position:absolute;width:46px;height:46px;border-radius:50%;left:35px;top:35px;background:#dfe8dcaa;border:1px solid #fff8}
+#arrow{position:fixed;z-index:25;display:none;font-size:42px;text-shadow:0 0 12px #58aaff,0 3px 8px #000;pointer-events:none}
+#toast{position:fixed;z-index:60;left:50%;top:29%;transform:translate(-50%,-12px);padding:8px 12px;background:#050805ef;border:1px solid #d2dec9aa;border-radius:10px;font-weight:900;opacity:0;transition:.2s;pointer-events:none}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#panel{position:fixed;z-index:70;inset:0;display:none;align-items:center;justify-content:center;background:#020403e8;padding:18px}
+#panel.show{display:flex}.card{width:min(580px,94vw);max-height:86vh;overflow:auto;background:#1b241d;border:1px solid #bac8b4;border-radius:18px;padding:18px;box-shadow:0 20px 70px #000}
+.card h2{margin:0 0 10px}.card p,.card li{line-height:1.45}.card button{margin:4px}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="rotate">📱↔️<br><br><b>Поверни iPhone горизонтально</b><br><small>Тёмный pixel-art лес</small></div>
-<div id="hud"><b>АЛЕКСАНДР · УР. 0</b><br>❤️ <div class="bar"><div id="hp" class="fill hp" style="width:100%"></div></div>⭐ <span id="xpText">0 / 100</span><div class="bar"><div id="xp" class="fill xp" style="width:0%"></div></div><span id="magic"></span></div>
-<div id="title">🌲 ТЁМНЫЙ ЛЕС · BETA 8</div>
-<div id="msg">🌑 Тёмный лес</div>
-<div id="hint">⚔️ Волки и гоблины</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 10</div>
+<div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div>
 <div id="joy"><div id="knob"></div></div>
-<button id="earth" class="btn">🪨</button>
-<button id="attack" class="btn">⚔️</button>
+<div id="buttons">
+<button onclick="interact()">◉ Взаимодействие</button>
+<button onclick="sword()">⚔️ Меч</button>
+<button onclick="rock()">🪨 Бросок</button>
+<button onclick="flight()">🌀 Полёт</button>
+<button onclick="mine()">⛏️ Кирка</button>
+<button onclick="bag()">🎒 Мешок</button>
+<button onclick="mapPanel()">🗺️ Мир</button>
+<button onclick="pauseGame()">Ⅱ Пауза</button>
+</div>
+<div id="panel"><div class="card" id="card"></div></div>
 
 <script>
-(()=>{"use strict";
-const c=document.getElementById("game"),ctx=c.getContext("2d");
-let W=0,H=0,D=1;
-function resize(){W=innerWidth;H=innerHeight;D=Math.min(devicePixelRatio||1,2);c.width=W*D;c.height=H*D;ctx.setTransform(D,0,0,D,0,0);document.getElementById("rotate").style.display=W>=H?"none":"flex"}
-addEventListener("resize",resize);resize();
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+let W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1);
+function resize(){W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
 
-const P={x:0,y:0,hp:100}; let xp=0,awake=false,atk=0,earthCd=0;
-const E=[
-{t:"ВОЛК",x:250,y:-150,h:100,m:100,s:43,xp:10,a:1},
-{t:"ВОЛК",x:-290,y:-210,h:100,m:100,s:43,xp:10,a:1},
-{t:"ГОБЛИН",x:360,y:-330,h:70,m:70,s:52,xp:20,a:1},
-{t:"ГОБЛИН",x:-400,y:-360,h:70,m:70,s:52,xp:20,a:1}
-];
+const world={w:3600,h:2400};
+const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false};
+const bags={'Начальный (маленький)':20,'Средний':30,'Большой':50,'Очень большой':80,'Гигантский':150};
+const target={x:430,y:690};
+const keys={},joy={x:0,y:0};let paused=false,attack=0,attackKind='',pickA=0,time=0,last=performance.now();
+let notes=[],ores=[],traders=[],butterflies=[],particles=[];
 
-function say(s){let m=document.getElementById("msg");m.textContent=s;clearTimeout(say.t);say.t=setTimeout(()=>m.textContent="",2300)}
-function gain(n){xp=Math.min(100,xp+n);document.getElementById("xp").style.width=xp+"%";document.getElementById("xpText").textContent=xp+" / 100"}
-function near(r){let b=null,d0=r;for(const e of E)if(e.a){let d=Math.hypot(e.x-P.x,e.y-P.y);if(d<d0){d0=d;b=e}}return b}
-function hit(){if(atk>0)return;atk=.35;let e=near(110);if(!e){say("Меч не достаёт до врага");return}e.h-=35;say("⚔️ Удар");if(e.h<=0){e.a=0;gain(e.xp);say("Победа! +"+e.xp+" XP");if(e.t==="ВОЛК"&&!awake){awake=1;document.getElementById("magic").textContent=" 🌍 Сила Земли пробудилась";document.getElementById("hint").textContent="🪨 Сила Земли доступна";say("🌍 Сила Земли пробудилась!");}}}
-function rock(){if(!awake){say("Сила Земли ещё не пробудилась");return}if(earthCd>0)return;earthCd=.55;let e=near(260);if(!e){say("Нет врага рядом");return}e.h-=55;say("🪨 Камень попал");if(e.h<=0){e.a=0;gain(e.xp);say("Победа! +"+e.xp+" XP")}}
-for(const id of ["attack","earth"]){document.getElementById(id).addEventListener("touchstart",e=>{e.preventDefault();e.stopPropagation();id==="attack"?hit():rock()},{passive:false});document.getElementById(id).addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();id==="attack"?hit():rock()})}
-
-const joy=document.getElementById("joy"),knob=document.getElementById("knob");let jid=null,mx=0,my=0;
-function joySet(x,y){let r=joy.getBoundingClientRect(),dx=x-(r.left+r.width/2),dy=y-(r.top+r.height/2),l=Math.hypot(dx,dy),m=45;if(l>m){dx=dx/l*m;dy=dy/l*m}mx=dx/m;my=dy/m;knob.style.left=38+dx+"px";knob.style.top=38+dy+"px"}
-function joyStart(e){e.preventDefault();e.stopPropagation();let q=e.changedTouches?e.changedTouches[0]:e;jid=q.identifier??q.pointerId;joySet(q.clientX,q.clientY);say("🕹️")}
-function joyMove(e){let q=e.changedTouches?e.changedTouches[0]:e;if(jid!==null&&(q.identifier??q.pointerId)===jid){e.preventDefault();joySet(q.clientX,q.clientY)}}
-function joyEnd(){jid=null;mx=my=0;knob.style.left="38px";knob.style.top="38px"}
-joy.addEventListener("touchstart",joyStart,{passive:false});joy.addEventListener("touchmove",joyMove,{passive:false});joy.addEventListener("touchend",joyEnd,{passive:false});
-joy.addEventListener("pointerdown",joyStart);joy.addEventListener("pointermove",joyMove);joy.addEventListener("pointerup",joyEnd);joy.addEventListener("pointercancel",joyEnd);
-
-let look=null,lx=0;
-c.addEventListener("touchstart",e=>{let q=e.changedTouches[0];if(q.clientX>W*.4){look=q.identifier;lx=q.clientX;e.preventDefault()}},{passive:false});
-c.addEventListener("touchmove",e=>{for(const q of e.changedTouches)if(q.identifier===look){e.preventDefault();lx=q.clientX}},{passive:false});
-
-function update(dt){
-atk=Math.max(0,atk-dt);earthCd=Math.max(0,earthCd-dt);
-let speed=180,c=Math.cos(P.angle||0),s=Math.sin(P.angle||0);
-P.x+=mx*speed*dt;P.y+=my*speed*dt;
-for(const e of E)if(e.a){let dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy);if(d>55){e.x+=dx/d*e.s*dt;e.y+=dy/d*e.s*dt}else P.hp-=5*dt}
-if(P.hp<=0){P.hp=100;P.x=P.y=0;say("Александр потерял сознание");}
-document.getElementById("hp").style.width=P.hp+"%";
+function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1250)}
+function nextXP(){return 100+p.level*10}
+function hud(){document.getElementById('hud').innerHTML='<b>Александр</b><br>Уровень: '+p.level+' • XP: '+Math.floor(p.xp)+' / '+nextXP()+'<br>'+p.dirt.toFixed(1)+'🟫, '+p.stone.toFixed(1)+'🪨 / '+p.cap+'<br>🎒 '+p.bag}
+function note(x,y,t){notes.push({x,y,t,l:1})}
+function addRes(type,n){let room=Math.max(0,p.cap-p.dirt-p.stone),g=Math.min(n,room);if(!g){toast('🎒 Мешок заполнен');return}p[type]+=g;note(p.x+Math.random()*80-40,p.y-45,'+'+g+(type==='stone'?'🪨':'🟫'));hud()}
+function spend(a,b){if(p.dirt<a||p.stone<b){toast('⚠️ Недостаточно ресурсов');return false}p.dirt-=a;p.stone-=b;hud();return true}
+function open(title,body){document.getElementById('card').innerHTML='<h2>'+title+'</h2>'+body+'<p><button onclick="closePanel()">Закрыть</button></p>';document.getElementById('panel').classList.add('show')}
+function closePanel(){document.getElementById('panel').classList.remove('show')}
+function bag(){open('🎒 Мешок','<p>Надет: <b>'+p.bag+'</b> • вместимость '+p.cap+'.</p><p>Средний — 30 • Большой — 50 • Очень большой — 80 • Гигантский — 150.</p>')}
+function mapPanel(){open('🗺️ Королевство','<p>На карте есть замок и деревня, лес, шахта с рудой, башня мага, повозка, места сражений и точки таинственных торговцев.</p><p>Сейчас главный визуальный фокус Beta 10 — единый живой мир.</p>')}
+function pauseGame(){paused=!paused;toast(paused?'Ⅱ Пауза':'▶ Продолжить')}
+function sword(){attack=.5;attackKind='sword';toast('⚔️ Удар мечом')}
+function rock(){if(spend(1,1)){attack=.55;attackKind='rock';toast('🪨 Бросок камня')}}
+function flight(){if(p.fly){p.fly=false;toast('🌀 Полёт выключен');return}if(p.dirt<.5||p.stone<.5){toast('⚠️ Нужно 0.5🟫 и 0.5🪨');return}p.fly=true;toast('🌀 Полёт включён')}
+function mine(){let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<85);if(!o){toast('⛏️ Подойди к руде');return}pickA=.5;o.h--;note(o.x,o.y-45,'Осталось ударов: '+o.h);if(o.h<=0){let r=Math.random(),n=r<.65?1:r<.9?2:3;note(o.x,o.y-70,n===1?'Маленький кусок':n===2?'Средний кусок':'Большой кусок');addRes(o.type,n);o.h=o.max}}
+function interact(){
+ let d=Math.hypot(p.x-target.x,p.y-target.y);
+ if(d<170){open('👑 Королевский зал','<p>Просторная высокая постройка из мрамора с золотой крышей и большими окнами. Снаружи — цветы и кусты.</p><p>Внутри красный ковёр ведёт к ступеням и королевскому креслу: красная кожа, золотые края, высокая спинка и подлокотники.</p><p>Рядом стоят гвардейцы с копьями, а на кресле сидит король.</p>');return}
+ let tr=traders.find(t=>Math.hypot(p.x-t.x,p.y-t.y)<120);
+ if(tr){open('🛒 Таинственный торговец','<p>Торговец резко раскрывает тёмное платье — внутри спрятаны товары.</p><button onclick="buy(500,30,\\'Средний\\')">Средний — 500 XP</button><button onclick="buy(777,50,\\'Большой\\')">Большой — 777 XP</button><br><button onclick="buy(1000,80,\\'Очень большой\\')">Очень большой — 1000 XP</button><button onclick="buy(1500,150,\\'Гигантский\\')">Гигантский — 1500 XP</button>');return}
+ let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mine();return}
 }
+function buy(cost,cap,name){if(p.xp<cost){toast('❌ Опыта недостаточно');return}p.xp-=cost;p.cap=cap;p.bag=name;hud();toast('🎒 Куплен '+name);closePanel()}
 
-function screen(x,y){return{x:W/2+(x-P.x),y:H/2+(y-P.y)}}
-function pixelTree(x,y,scale=1){
-let q=screen(x,y);if(q.x<-80||q.x>W+80||q.y<-100||q.y>H+100)return;
-ctx.fillStyle="#35251e";ctx.fillRect(q.x-7*scale,q.y-45*scale,14*scale,45*scale);
-ctx.fillStyle="#152d23";ctx.fillRect(q.x-35*scale,q.y-85*scale,70*scale,35*scale);
-ctx.fillStyle="#1c4430";ctx.fillRect(q.x-26*scale,q.y-105*scale,52*scale,30*scale);
-ctx.fillStyle="#2d5a3b";ctx.fillRect(q.x-14*scale,q.y-118*scale,28*scale,22*scale);
+function setup(){
+ ores=[
+  [760,300,'stone'],[930,350,'stone'],[1060,265,'dirt'],[720,455,'dirt'],[1010,460,'stone'],[1130,360,'stone'],
+  [870,405,'stone'],[980,520,'dirt']
+ ].map(a=>({x:a[0],y:a[1],type:a[2],h:4,max:4}));
+ traders=[{x:1520,y:1410},{x:2280,y:520},{x:2720,y:1480}];
+ for(let i=0;i<8;i++)butterflies.push({x:1280+(i*233)%1700,y:250+(i*317)%1750,a:i*.8,s:.6+Math.random()*.5});
+}setup();
+
+function move(dt){
+ let x=(keys.d?1:0)-(keys.a?1:0)+(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0),y=(keys.s?1:0)-(keys.w?1:0)+(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
+ x+=joy.x;y+=joy.y;let l=Math.hypot(x,y);if(l>1){x/=l;y/=l}
+ let sp=p.fly?270:175;p.x=Math.max(30,Math.min(world.w-30,p.x+x*sp*dt));p.y=Math.max(30,Math.min(world.h-30,p.y+y*sp*dt));if(l>.1)p.dir=Math.atan2(y,x);
+ if(p.fly){move.t=(move.t||0)+dt;if(move.t>=1){move.t=0;if(!spend(.5,.5)){p.fly=false;toast('⚠️ Ресурсы закончились')}}}
+}
+function cam(){return{x:Math.max(0,Math.min(world.w-W,p.x-W/2)),y:Math.max(0,Math.min(world.h-H,p.y-H/2))}}
+function rect(x,y,w,h,f,s){ctx.fillStyle=f;ctx.fillRect(x,y,w,h);if(s){ctx.strokeStyle=s;ctx.strokeRect(x,y,w,h)}}
+function poly(a,f,s){ctx.beginPath();a.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=f;ctx.fill();if(s){ctx.strokeStyle=s;ctx.stroke()}}
+function circ(x,y,r,f,s){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=f;ctx.fill();if(s){ctx.strokeStyle=s;ctx.stroke()}}
+function label(x,y,t,size=13){ctx.font='900 '+size+'px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.lineWidth=4;ctx.strokeText(t,x,y);ctx.fillText(t,x,y)}
+
+function tree(x,y,s){ctx.fillStyle='#4d3927';ctx.fillRect(x-6,y,s*.32,s*1.6);circ(x,y,s,'#1f4b29','#17351f');circ(x-18,y+12,s*.62,'#2d6537');circ(x+20,y+13,s*.58,'#2d6537')}
+function house(x,y){rect(x,y,105,75,'#c9b99c','#604c34');poly([[x-12,y],[x+52,y-55],[x+118,y]],'#7d3e32');rect(x+40,y+38,25,37,'#5a4630');circ(x+22,y+25,9,'#8dc8d5');circ(x+82,y+25,9,'#8dc8d5')}
+function castle(){
+ rect(80,545,700,430,'#717873','#303530');rect(145,610,570,300,'#d9d4c8','#625c51');
+ rect(70,510,105,475,'#656b66');rect(685,510,105,475,'#656b66');
+ poly([[210,615],[430,385],[650,615]],'#c9a72d','#765f19');
+ rect(340,755,180,150,'#513a2c');rect(235,675,390,80,'#802630');label(430,725,'КРАСНЫЙ КОВЁР',12);
+ rect(385,645,90,85,'#992633','#d2ae46');label(430,698,'♛',28);
+ for(let x of [280,580]){circ(x,735,18,'#b9c3bf');rect(x-10,753,20,85,'#59645d');}
+ for(let i=0;i<16;i++){circ(130+(i%8)*78,935+Math.floor(i/8)*28,6,'#d66fa2');circ(155+(i%8)*78,930+Math.floor(i/8)*28,5,'#8fca65')}
+ label(430,1015,'КОРОЛЕВСКИЙ ЗАМОК',20)
+}
+function mine(){
+ rect(610,135,600,410,'#5b5146','#292621');rect(665,210,490,290,'#20251f');
+ poly([[665,320],[770,205],[850,320],[935,170],[1035,315],[1125,220],[1155,500],[665,500]],'#343c36');
+ label(910,575,'ШАХТА',19);label(910,598,'видимые каменные и грязевые жилы',11)
+}
+function tower(){
+ rect(2170,100,400,740,'#81776d','#34352f');for(let y=200;y<780;y+=105)rect(2245,y,250,82,'#645a50','#3b342e');
+ poly([[2110,150],[2370,0],[2630,150]],'#54462f','#2e261d');rect(2318,710,105,130,'#4a3528');
+ for(let i=0;i<28;i++){let x=2170+(i*67)%400,y=155+(i*131)%610;rect(x,y,9,38,'#2d6337')}
+ label(2370,880,'БАШНЯ МАГА',19);label(2370,903,'книги • зелья • травы • комната мага',11)
+}
+function wagon(){rect(1415,1365,185,95,'#70472f','#c9a45d');circ(1450,1477,28,'#252525');circ(1560,1477,28,'#252525');circ(1510,1328,34,'#d9b98e');label(1510,1518,'ПОВОЗКА',13)}
+function ore(o){let col=o.type==='stone'?'#aab2ae':'#855b3c';poly([[o.x-35,o.y+22],[o.x-22,o.y-28],[o.x+12,o.y-42],[o.x+40,o.y-5],[o.x+28,o.y+32]],col,'#313732');label(o.x,o.y+60,'⛏️ '+o.h,11)}
+function trader(t){circ(t.x,t.y,28,'#111514','#aab3a8');poly([[t.x-40,t.y-5],[t.x,t.y-65],[t.x+40,t.y-5],[t.x+30,t.y+45],[t.x-30,t.y+45]],'#090a0a');label(t.x,t.y+68,'ТОРГОВЕЦ',10)}
+function butterfly(b){b.a+=.018;let x=b.x+Math.sin(b.a)*35,y=b.y+Math.cos(b.a*.8)*24;ctx.strokeStyle=['#ffd34d','#64b8ff','#d28cff','#ff8bb7','#8be36b'][Math.floor(b.a*2)%5]+'88';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-Math.cos(b.a)*25,y-Math.sin(b.a)*25);ctx.stroke();circ(x-6,y,5,'#f1e6b0');circ(x+6,y,5,'#f1e6b0');circ(x,y,3,'#333')}
+function player(){
+ circ(p.x,p.y,21,'#b97850','#2a201b');circ(p.x,p.y-28,15,'#68402b');rect(p.x-18,p.y+10,36,35,'#3b6072');
+ if(p.fly){circ(p.x,p.y,35,'#8dd0ed33','#bfeeff')}
+ if(attack){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.dir+(attackKind==='sword'?0:.2));ctx.strokeStyle=attackKind==='sword'?'#eef2ed':'#b6a07e';ctx.lineWidth=attackKind==='sword'?9:7;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(78,0);ctx.stroke();ctx.restore()}
+ if(pickA){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.9+pickA*2.8);ctx.strokeStyle='#9ca6a0';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(45,0);ctx.stroke();ctx.restore()}
 }
 function draw(){
-ctx.clearRect(0,0,W,H);
-ctx.fillStyle="#101a23";ctx.fillRect(0,0,W,H);
-ctx.fillStyle="#162d25";ctx.fillRect(0,H*.38,W,H*.62);
-ctx.fillStyle="#203a2c";for(let y=0;y<H;y+=32){for(let x=0;x<W;x+=32){let n=((x*13+y*7)%19);if(n<4)ctx.fillRect(x+8,y+17,4,3)}}
-for(let i=-7;i<=7;i++)for(let j=-5;j<=4;j++)pixelTree(i*155+(j%2)*50,j*150-230,1+(Math.abs(j)%2)*.15);
-
-for(const e of E)if(e.a){let q=screen(e.x,e.y),col=e.t==="ВОЛК"?"#4b5360":"#55713f";if(q.x>-80&&q.x<W+80&&q.y>-80&&q.y<H+80){
-ctx.fillStyle="#0008";ctx.fillRect(q.x-30,q.y-32,60,6);ctx.fillStyle="#a8323b";ctx.fillRect(q.x-30,q.y-32,60*(e.h/e.m),6);
-ctx.fillStyle=col;ctx.fillRect(q.x-22,q.y-20,44,36);
-ctx.fillStyle=e.t==="ВОЛК"?"#777f89":"#8da56b";ctx.fillRect(q.x-16,q.y-30,32,14);
-ctx.fillStyle="#111";ctx.fillRect(q.x-10,q.y-26,5,5);ctx.fillRect(q.x+5,q.y-26,5,5);
-ctx.fillStyle="#ddd";ctx.font="bold 10px sans-serif";ctx.textAlign="center";ctx.fillText(e.t,q.x,q.y-39);
-}}
-ctx.fillStyle="#05070b66";ctx.fillRect(W/2-28,H/2+30,56,8);
-ctx.fillStyle="#394f75";ctx.fillRect(W/2-18,H/2-27,36,50);
-ctx.fillStyle="#c18b68";ctx.fillRect(W/2-13,H/2-46,26,20);
-ctx.fillStyle="#111827";ctx.fillRect(W/2-17,H/2-51,34,9);
-ctx.fillStyle="#d6dbe3";ctx.fillRect(W/2+18,H/2-20,5,42);
-if(atk>0){ctx.strokeStyle="#f0e5c8";ctx.lineWidth=6;ctx.beginPath();ctx.arc(W/2+8,H/2-4,48,-1.1,0.9);ctx.stroke();}
-ctx.fillStyle="#fff";ctx.font="bold 10px sans-serif";ctx.textAlign="center";ctx.fillText("АЛЕКСАНДР",W/2,H/2-57);
+ ctx.clearRect(0,0,W,H);let C=cam();ctx.save();ctx.translate(-C.x,-C.y);
+ rect(0,0,world.w,world.h,'#2d5a31');
+ for(let i=0;i<110;i++){let x=(i*251)%world.w,y=(i*149)%world.h;circ(x,y,30+(i%4)*12,'#32633655')}
+ // mountains
+ for(let i=0;i<9;i++){let x=180+i*410;poly([[x,430],[x+190,80+(i%3)*50],[x+380,430]],'#395342','#243c2b')}
+ // river
+ ctx.strokeStyle='#397fa8';ctx.lineWidth=110;ctx.beginPath();ctx.moveTo(1330,0);ctx.bezierCurveTo(1170,400,1510,650,1320,1080);ctx.bezierCurveTo(1110,1450,1460,1780,1260,2400);ctx.stroke();
+ // roads
+ ctx.strokeStyle='#9a7b4d';ctx.lineWidth=72;ctx.beginPath();ctx.moveTo(350,900);ctx.lineTo(780,790);ctx.lineTo(940,540);ctx.stroke();ctx.beginPath();ctx.moveTo(700,800);ctx.lineTo(1500,980);ctx.lineTo(2070,1110);ctx.stroke();
+ // forest
+ for(let i=0;i<95;i++){let x=1380+(i*173)%2050,y=120+(i*313)%2050;if(x>2080&&y<880)continue;tree(x,y,35+(i%4)*7)}
+ // village
+ for(let i=0;i<12;i++){let x=180+(i%4)*150,y=1100+Math.floor(i/4)*145;house(x,y)}
+ label(520,1070,'СРЕДНЕВЕКОВАЯ ДЕРЕВНЯ',18);
+ castle();mine();tower();wagon();
+ circ(1850,980,130,'#1b332955','#9bb59c');label(1850,835,'МЕСТО БИТВЫ',14);
+ circ(2050,1120,115,'#18373b55','#83c0c8');label(2050,980,'ТАИНСТВЕННЫЙ',14);
+ ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);player();
+ ctx.restore();
+ ctx.save();ctx.translate(-C.x,-C.y);notes.forEach(n=>{ctx.globalAlpha=n.l;label(n.x,n.y,n.t,14)});ctx.restore();
 }
-let last=performance.now();function loop(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
-})();
+function update(dt){
+ if(paused)return;
+ time+=dt;move(dt);attack=Math.max(0,attack-dt);pickA=Math.max(0,pickA-dt);
+ notes.forEach(n=>{n.l-=dt;n.y-=18*dt});notes=notes.filter(n=>n.l>0);hud();
+ let C=cam(),sx=target.x-C.x,sy=target.y-C.y,ang=Math.atan2(sy-H/2,sx-W/2),ar=document.getElementById('arrow');
+ if(Math.hypot(sx-W/2,sy-H/2)<180)ar.style.display='none';
+ else{ar.style.display='block';ar.style.left=(W/2+Math.cos(ang)*Math.min(W,H)*.37)+'px';ar.style.top=(H/2+Math.sin(ang)*Math.min(W,H)*.37)+'px';ar.style.transform='translate(-50%,-50%) rotate('+ang+'rad)'}
+}
+function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+addEventListener('keydown',e=>keys[e.key]=true);addEventListener('keyup',e=>keys[e.key]=false);
+
+let tid=null;const j=document.getElementById('joy');
+function setJoy(x,y){let r=j.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=x-cx,dy=y-cy,l=Math.hypot(dx,dy),m=r.width*.31;if(l>m){dx=dx/l*m;dy=dy/l*m}document.getElementById('knob').style.transform='translate('+dx+'px,'+dy+'px)';joy.x=dx/m;joy.y=dy/m}
+j.addEventListener('touchstart',e=>{tid=e.changedTouches[0].identifier;let q=e.changedTouches[0];setJoy(q.clientX,q.clientY)},{passive:true});
+j.addEventListener('touchmove',e=>{for(let q of e.changedTouches)if(q.identifier===tid)setJoy(q.clientX,q.clientY)},{passive:true});
+j.addEventListener('touchend',()=>{tid=null;joy.x=joy.y=0;document.getElementById('knob').style.transform='translate(0,0)'},{passive:true});
+hud();
 </script>
-
-<style>
-/* Alexander RPG — Beta 9 systems layer */
-#b9-ui{position:fixed;inset:0;pointer-events:none;z-index:9999;font-family:Arial,sans-serif;color:#fff}
-#b9-hud{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.62);padding:9px 12px;border:1px solid rgba(255,255,255,.25);border-radius:8px;line-height:1.45;font-size:14px;min-width:175px}
-#b9-hud .muted{opacity:.72;font-size:12px}
-#b9-toast{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-size:20px;font-weight:700;text-shadow:0 2px 4px #000;opacity:0;transition:opacity .18s,transform .55s}
-#b9-toast.show{opacity:1;transform:translate(-50%,-75%)}
-#b9-controls{position:absolute;right:14px;bottom:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:300px;pointer-events:auto}
-.b9-btn{border:1px solid rgba(255,255,255,.35);background:rgba(20,20,20,.78);color:#fff;border-radius:10px;padding:10px 12px;font-weight:700}
-#b9-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(18,15,12,.96);border:2px solid #b99a58;border-radius:12px;padding:20px;min-width:290px;max-width:90vw;display:none;pointer-events:auto;box-shadow:0 12px 50px #000}
-#b9-panel.show{display:block}
-#b9-panel h2{margin:0 0 12px}
-#b9-panel button{margin:5px 0;padding:9px 12px;width:100%}
-#b9-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);padding:6px 10px;border-radius:8px;font-size:12px;opacity:.9}
-</style>
-<div id="b9-ui">
-  <div id="b9-hud">
-    <div><b>Уровень:</b> <span id="b9-level">0</span></div>
-    <div><b>XP:</b> <span id="b9-xp">0</span> / <span id="b9-next">100</span></div>
-    <div><b>Ресурсы:</b> <span id="b9-dirt">0</span>🟫, <span id="b9-stone">0</span>🪨 / <span id="b9-cap">20</span></div>
-    <div class="muted">Мешок: <span id="b9-bag">Маленький</span></div>
-  </div>
-  <div id="b9-toast"></div>
-  <div id="b9-controls">
-    <button class="b9-btn" id="b9-move">🌀 Полёт</button>
-    <button class="b9-btn" id="b9-rock">🪨 Бросок камня</button>
-    <button class="b9-btn" id="b9-pick">⛏️ Кирка</button>
-    <button class="b9-btn" id="b9-castle">🏰 Замок</button>
-    <button class="b9-btn" id="b9-mine">⛏️ Шахта</button>
-  </div>
-  <div id="b9-panel"></div>
-  <div id="b9-hint">Beta 9: нажми «Шахта» для теста добычи или «Замок» для королевской зоны.</div>
-</div>
-<script>
-(() => {
-  const S = {
-    level:0, xp:0, dirt:0, stone:0, bag:"Маленький", cap:20,
-    flying:false, location:"Лес",
-    bags:{
-      "Маленький":{cap:20,color:"brown",price:0},
-      "Средний":{cap:30,color:"white",price:500},
-      "Большой":{cap:50,color:"maroon",price:777},
-      "Очень большой":{cap:80,color:"lime",price:1000},
-      "Гигантский":{cap:150,color:"gold",price:1500}
-    }
-  };
-
-  const $ = id => document.getElementById(id);
-  const hud = () => {
-    $("b9-level").textContent=S.level;
-    $("b9-xp").textContent=Math.floor(S.xp*10)/10;
-    $("b9-next").textContent=100 + S.level*10;
-    $("b9-dirt").textContent=Math.floor(S.dirt*10)/10;
-    $("b9-stone").textContent=Math.floor(S.stone*10)/10;
-    $("b9-cap").textContent=S.cap;
-    $("b9-bag").textContent=S.bag;
-  };
-  function toast(t){
-    const e=$("b9-toast"); e.textContent=t; e.classList.remove("show");
-    void e.offsetWidth; e.classList.add("show");
-    setTimeout(()=>e.classList.remove("show"),1300);
-  }
-  function gainResource(type,n){
-    const total=S.dirt+S.stone;
-    const room=Math.max(0,S.cap-total);
-    const add=Math.min(n,room);
-    S[type]+=add;
-    toast(add<n ? `🎒 Мешок заполнен: +${add}${type==="stone"?"🪨":"🟫"}` : `+${add}${type==="stone"?"🪨":"🟫"}`);
-    hud();
-  }
-  function spend(dirt,stone,label){
-    if(S.dirt<dirt || S.stone<stone){ toast("⚠️ Недостаточно 🟫/🪨"); return false; }
-    S.dirt-=dirt; S.stone-=stone;
-    toast(`-${dirt}🟫, -${stone}🪨`);
-    hud(); return true;
-  }
-  function mine(type){
-    const r=Math.random(), n=r<.65?1:r<.90?2:3;
-    toast("⛏️ Удар! Осталось ударов: 0");
-    setTimeout(()=>toast(n===1?"Маленький кусок":n===2?"Средний кусок":"Большой кусок"),350);
-    setTimeout(()=>gainResource(type,n),700);
-  }
-  $("b9-pick").onclick=()=>mine(Math.random()<.5?"stone":"dirt");
-  $("b9-rock").onclick=()=>{ if(spend(1,1,"rock")) toast("🪨 Камень брошен!"); };
-  let flyTimer=null;
-  $("b9-move").onclick=()=>{
-    if(S.flying){S.flying=false; clearInterval(flyTimer); toast("🌀 Полёт отключён"); return;}
-    if(S.dirt<.5 || S.stone<.5){toast("⚠️ Недостаточно ресурсов для полёта");return;}
-    S.flying=true; toast("🌀 Полёт включён");
-    flyTimer=setInterval(()=>{
-      if(!S.flying)return;
-      if(!spend(.5,.5,"fly")){
-        S.flying=false; clearInterval(flyTimer); toast("⚠️ Ресурс закончился — Александр падает");
-      }
-    },1000);
-  };
-
-  const panel=$("b9-panel");
-  function openPanel(title,body){
-    panel.innerHTML="<h2>"+title+"</h2>"+body+'<button id="b9-close">Закрыть</button>';
-    panel.classList.add("show"); $("b9-close").onclick=()=>panel.classList.remove("show");
-  }
-  $("b9-castle").onclick=()=>openPanel("🏰 Королевский замок",
-    "<p>Высокая просторная королевская постройка, мрамор, золотая крыша, большие окна и мраморные ступени.</p>"+
-    "<p><b>Тронный зал:</b> красный ковёр ведёт к возвышению с королевским креслом. Рядом стоят гвардейцы с копьями.</p>"+
-    "<p>Здесь позже будет полноценная сцена разговора Александра с королём.</p>");
-  $("b9-mine").onclick=()=>openPanel("⛏️ Шахта",
-    "<p>Зона тестирования добычи камня и грязи.</p>"+
-    "<p>Размер куска: маленький 65%, средний 25%, большой 10%.</p>"+
-    "<p>Нажми «Кирка», чтобы получить ресурс в текущий мешок.</p>");
-
-  hud();
-})();
-</script>
-
 </body>
 </html>
