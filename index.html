@@ -34,7 +34,7 @@ button:active{transform:scale(.95);background:#41553f}
 <button onclick="sword()">⚔️ Меч</button>
 <button onclick="rock()">🪨 Бросок</button>
 <button onclick="flight()">🌀 Полёт</button>
-<button onclick="mine()">⛏️ Кирка</button>
+<button onclick="mineResource()">⛏️ Кирка</button>
 <button onclick="bag()">🎒 Мешок</button>
 <button onclick="mapPanel()">🗺️ Мир</button>
 <button onclick="pauseGame()">Ⅱ Пауза</button>
@@ -67,13 +67,13 @@ function pauseGame(){paused=!paused;toast(paused?'Ⅱ Пауза':'▶ Прод�
 function sword(){attack=.5;attackKind='sword';toast('⚔️ Удар мечом')}
 function rock(){if(spend(1,1)){attack=.55;attackKind='rock';toast('🪨 Бросок камня')}}
 function flight(){if(p.fly){p.fly=false;toast('🌀 Полёт выключен');return}if(p.dirt<.5||p.stone<.5){toast('⚠️ Нужно 0.5🟫 и 0.5🪨');return}p.fly=true;toast('🌀 Полёт включён')}
-function mine(){let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<85);if(!o){toast('⛏️ Подойди к руде');return}pickA=.5;o.h--;note(o.x,o.y-45,'Осталось ударов: '+o.h);if(o.h<=0){let r=Math.random(),n=r<.65?1:r<.9?2:3;note(o.x,o.y-70,n===1?'Маленький кусок':n===2?'Средний кусок':'Большой кусок');addRes(o.type,n);o.h=o.max}}
+function mineResource(){let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<85);if(!o){toast('⛏️ Подойди к руде');return}p.dir=Math.atan2(o.y-p.y,o.x-p.x);pickA=.5;o.h--;note(o.x,o.y-45,'Осталось ударов: '+o.h);if(o.h<=0){let r=Math.random(),n=r<.65?1:r<.9?2:3;note(o.x,o.y-70,n===1?'Маленький кусок':n===2?'Средний кусок':'Большой кусок');addRes(o.type,n);o.h=o.max}}
 function interact(){
  let d=Math.hypot(p.x-target.x,p.y-target.y);
  if(d<170){open('👑 Королевский зал','<p>Просторная высокая постройка из мрамора с золотой крышей и большими окнами. Снаружи — цветы и кусты.</p><p>Внутри красный ковёр ведёт к ступеням и королевскому креслу: красная кожа, золотые края, высокая спинка и подлокотники.</p><p>Рядом стоят гвардейцы с копьями, а на кресле сидит король.</p>');return}
  let tr=traders.find(t=>Math.hypot(p.x-t.x,p.y-t.y)<120);
- if(tr){open('🛒 Таинственный торговец','<p>Торговец резко раскрывает тёмное платье — внутри спрятаны товары.</p><button onclick="buy(500,30,\\'Средний\\')">Средний — 500 XP</button><button onclick="buy(777,50,\\'Большой\\')">Большой — 777 XP</button><br><button onclick="buy(1000,80,\\'Очень большой\\')">Очень большой — 1000 XP</button><button onclick="buy(1500,150,\\'Гигантский\\')">Гигантский — 1500 XP</button>');return}
- let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mine();return}
+ if(tr){open('🛒 Таинственный торговец',`<p>Торговец резко раскрывает тёмное платье — внутри спрятаны товары.</p><button onclick="buy(500,30,'Средний')">Средний — 500 XP</button><button onclick="buy(777,50,'Большой')">Большой — 777 XP</button><br><button onclick="buy(1000,80,'Очень большой')">Очень большой — 1000 XP</button><button onclick="buy(1500,150,'Гигантский')">Гигантский — 1500 XP</button>`);return}
+ let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mineResource();return}
 }
 function buy(cost,cap,name){if(p.xp<cost){toast('❌ Опыта недостаточно');return}p.xp-=cost;p.cap=cap;p.bag=name;hud();toast('🎒 Куплен '+name);closePanel()}
 
@@ -110,7 +110,7 @@ function castle(){
  for(let i=0;i<16;i++){circ(130+(i%8)*78,935+Math.floor(i/8)*28,6,'#d66fa2');circ(155+(i%8)*78,930+Math.floor(i/8)*28,5,'#8fca65')}
  label(430,1015,'КОРОЛЕВСКИЙ ЗАМОК',20)
 }
-function mine(){
+function renderMine(){
  rect(610,135,600,410,'#5b5146','#292621');rect(665,210,490,290,'#20251f');
  poly([[665,320],[770,205],[850,320],[935,170],[1035,315],[1125,220],[1155,500],[665,500]],'#343c36');
  label(910,575,'ШАХТА',19);label(910,598,'видимые каменные и грязевые жилы',11)
@@ -129,7 +129,7 @@ function player(){
  circ(p.x,p.y,21,'#b97850','#2a201b');circ(p.x,p.y-28,15,'#68402b');rect(p.x-18,p.y+10,36,35,'#3b6072');
  if(p.fly){circ(p.x,p.y,35,'#8dd0ed33','#bfeeff')}
  if(attack){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.dir+(attackKind==='sword'?0:.2));ctx.strokeStyle=attackKind==='sword'?'#eef2ed':'#b6a07e';ctx.lineWidth=attackKind==='sword'?9:7;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(78,0);ctx.stroke();ctx.restore()}
- if(pickA){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.9+pickA*2.8);ctx.strokeStyle='#9ca6a0';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(45,0);ctx.stroke();ctx.restore()}
+ if(pickA){ctx.save();ctx.translate(p.x,p.y);let swing=Math.sin((.5-pickA)/.5*Math.PI);ctx.rotate(-1.2+swing*2.35);ctx.strokeStyle='#9ca6a0';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(52,0);ctx.stroke();ctx.strokeStyle='#6f4b32';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(2,0);ctx.lineTo(32,0);ctx.stroke();ctx.restore();if(pickA<.16){circ(p.x+Math.cos(p.dir)*32,p.y+Math.sin(p.dir)*32,10,'#d9d1a655');circ(p.x+Math.cos(p.dir)*38,p.y+Math.sin(p.dir)*38,4,'#e7e1c5')}}
 }
 function draw(){
  ctx.clearRect(0,0,W,H);let C=cam();ctx.save();ctx.translate(-C.x,-C.y);
@@ -146,7 +146,7 @@ function draw(){
  // village
  for(let i=0;i<12;i++){let x=180+(i%4)*150,y=1100+Math.floor(i/4)*145;house(x,y)}
  label(520,1070,'СРЕДНЕВЕКОВАЯ ДЕРЕВНЯ',18);
- castle();mine();tower();wagon();
+ castle();renderMine();tower();wagon();
  circ(1850,980,130,'#1b332955','#9bb59c');label(1850,835,'МЕСТО БИТВЫ',14);
  circ(2050,1120,115,'#18373b55','#83c0c8');label(2050,980,'ТАИНСТВЕННЫЙ',14);
  ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);player();
