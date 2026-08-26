@@ -109,5 +109,121 @@ ctx.fillStyle="#fff";ctx.font="bold 10px sans-serif";ctx.textAlign="center";ctx.
 let last=performance.now();function loop(t){let dt=Math.min(.04,(t-last)/1000);last=t;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 })();
 </script>
+
+<style>
+/* Alexander RPG — Beta 9 systems layer */
+#b9-ui{position:fixed;inset:0;pointer-events:none;z-index:9999;font-family:Arial,sans-serif;color:#fff}
+#b9-hud{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.62);padding:9px 12px;border:1px solid rgba(255,255,255,.25);border-radius:8px;line-height:1.45;font-size:14px;min-width:175px}
+#b9-hud .muted{opacity:.72;font-size:12px}
+#b9-toast{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-size:20px;font-weight:700;text-shadow:0 2px 4px #000;opacity:0;transition:opacity .18s,transform .55s}
+#b9-toast.show{opacity:1;transform:translate(-50%,-75%)}
+#b9-controls{position:absolute;right:14px;bottom:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:300px;pointer-events:auto}
+.b9-btn{border:1px solid rgba(255,255,255,.35);background:rgba(20,20,20,.78);color:#fff;border-radius:10px;padding:10px 12px;font-weight:700}
+#b9-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(18,15,12,.96);border:2px solid #b99a58;border-radius:12px;padding:20px;min-width:290px;max-width:90vw;display:none;pointer-events:auto;box-shadow:0 12px 50px #000}
+#b9-panel.show{display:block}
+#b9-panel h2{margin:0 0 12px}
+#b9-panel button{margin:5px 0;padding:9px 12px;width:100%}
+#b9-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);padding:6px 10px;border-radius:8px;font-size:12px;opacity:.9}
+</style>
+<div id="b9-ui">
+  <div id="b9-hud">
+    <div><b>Уровень:</b> <span id="b9-level">0</span></div>
+    <div><b>XP:</b> <span id="b9-xp">0</span> / <span id="b9-next">100</span></div>
+    <div><b>Ресурсы:</b> <span id="b9-dirt">0</span>🟫, <span id="b9-stone">0</span>🪨 / <span id="b9-cap">20</span></div>
+    <div class="muted">Мешок: <span id="b9-bag">Маленький</span></div>
+  </div>
+  <div id="b9-toast"></div>
+  <div id="b9-controls">
+    <button class="b9-btn" id="b9-move">🌀 Полёт</button>
+    <button class="b9-btn" id="b9-rock">🪨 Бросок камня</button>
+    <button class="b9-btn" id="b9-pick">⛏️ Кирка</button>
+    <button class="b9-btn" id="b9-castle">🏰 Замок</button>
+    <button class="b9-btn" id="b9-mine">⛏️ Шахта</button>
+  </div>
+  <div id="b9-panel"></div>
+  <div id="b9-hint">Beta 9: нажми «Шахта» для теста добычи или «Замок» для королевской зоны.</div>
+</div>
+<script>
+(() => {
+  const S = {
+    level:0, xp:0, dirt:0, stone:0, bag:"Маленький", cap:20,
+    flying:false, location:"Лес",
+    bags:{
+      "Маленький":{cap:20,color:"brown",price:0},
+      "Средний":{cap:30,color:"white",price:500},
+      "Большой":{cap:50,color:"maroon",price:777},
+      "Очень большой":{cap:80,color:"lime",price:1000},
+      "Гигантский":{cap:150,color:"gold",price:1500}
+    }
+  };
+
+  const $ = id => document.getElementById(id);
+  const hud = () => {
+    $("b9-level").textContent=S.level;
+    $("b9-xp").textContent=Math.floor(S.xp*10)/10;
+    $("b9-next").textContent=100 + S.level*10;
+    $("b9-dirt").textContent=Math.floor(S.dirt*10)/10;
+    $("b9-stone").textContent=Math.floor(S.stone*10)/10;
+    $("b9-cap").textContent=S.cap;
+    $("b9-bag").textContent=S.bag;
+  };
+  function toast(t){
+    const e=$("b9-toast"); e.textContent=t; e.classList.remove("show");
+    void e.offsetWidth; e.classList.add("show");
+    setTimeout(()=>e.classList.remove("show"),1300);
+  }
+  function gainResource(type,n){
+    const total=S.dirt+S.stone;
+    const room=Math.max(0,S.cap-total);
+    const add=Math.min(n,room);
+    S[type]+=add;
+    toast(add<n ? `🎒 Мешок заполнен: +${add}${type==="stone"?"🪨":"🟫"}` : `+${add}${type==="stone"?"🪨":"🟫"}`);
+    hud();
+  }
+  function spend(dirt,stone,label){
+    if(S.dirt<dirt || S.stone<stone){ toast("⚠️ Недостаточно 🟫/🪨"); return false; }
+    S.dirt-=dirt; S.stone-=stone;
+    toast(`-${dirt}🟫, -${stone}🪨`);
+    hud(); return true;
+  }
+  function mine(type){
+    const r=Math.random(), n=r<.65?1:r<.90?2:3;
+    toast("⛏️ Удар! Осталось ударов: 0");
+    setTimeout(()=>toast(n===1?"Маленький кусок":n===2?"Средний кусок":"Большой кусок"),350);
+    setTimeout(()=>gainResource(type,n),700);
+  }
+  $("b9-pick").onclick=()=>mine(Math.random()<.5?"stone":"dirt");
+  $("b9-rock").onclick=()=>{ if(spend(1,1,"rock")) toast("🪨 Камень брошен!"); };
+  let flyTimer=null;
+  $("b9-move").onclick=()=>{
+    if(S.flying){S.flying=false; clearInterval(flyTimer); toast("🌀 Полёт отключён"); return;}
+    if(S.dirt<.5 || S.stone<.5){toast("⚠️ Недостаточно ресурсов для полёта");return;}
+    S.flying=true; toast("🌀 Полёт включён");
+    flyTimer=setInterval(()=>{
+      if(!S.flying)return;
+      if(!spend(.5,.5,"fly")){
+        S.flying=false; clearInterval(flyTimer); toast("⚠️ Ресурс закончился — Александр падает");
+      }
+    },1000);
+  };
+
+  const panel=$("b9-panel");
+  function openPanel(title,body){
+    panel.innerHTML="<h2>"+title+"</h2>"+body+'<button id="b9-close">Закрыть</button>';
+    panel.classList.add("show"); $("b9-close").onclick=()=>panel.classList.remove("show");
+  }
+  $("b9-castle").onclick=()=>openPanel("🏰 Королевский замок",
+    "<p>Высокая просторная королевская постройка, мрамор, золотая крыша, большие окна и мраморные ступени.</p>"+
+    "<p><b>Тронный зал:</b> красный ковёр ведёт к возвышению с королевским креслом. Рядом стоят гвардейцы с копьями.</p>"+
+    "<p>Здесь позже будет полноценная сцена разговора Александра с королём.</p>");
+  $("b9-mine").onclick=()=>openPanel("⛏️ Шахта",
+    "<p>Зона тестирования добычи камня и грязи.</p>"+
+    "<p>Размер куска: маленький 65%, средний 25%, большой 10%.</p>"+
+    "<p>Нажми «Кирка», чтобы получить ресурс в текущий мешок.</p>");
+
+  hud();
+})();
+</script>
+
 </body>
 </html>
