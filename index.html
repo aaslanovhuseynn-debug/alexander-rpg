@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр RPG — Beta 16</title>
+<title>Александр RPG — Beta 16.1</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
@@ -39,7 +39,7 @@ button:active{transform:scale(.95);background:#41553f}
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 16</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 16.1</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
 <button id="settingsBtn" onclick="openSettings()" aria-label="Настройки">⚙️</button>
@@ -434,6 +434,7 @@ document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault
 
 <script>
 /* =========================
+   BETA 16.1 — BUTTON POSITION SAVE FIX
    BETA 16 — SETTINGS / MULTI-TOUCH
    ========================= */
 const B16_KEY='alexander_rpg_beta16_controls';
@@ -462,8 +463,13 @@ function b16Apply(){
     b.style.transform='scale('+B16.buttonScale+')';
     b.style.opacity=B16.buttonOpacity;
     const p=B16.positions[b.id||('b'+i)];
-    if(p && B16.edit){b.style.position='fixed';b.style.left=p.x+'px';b.style.top=p.y+'px';b.style.right='auto';b.style.bottom='auto'}
-    else if(!B16.edit){b.style.position='';b.style.left='';b.style.top='';b.style.right='';b.style.bottom=''}
+    /* Saved custom coordinates must remain active even after leaving edit mode. */
+    if(p){
+      b.style.position='fixed'; b.style.left=p.x+'px'; b.style.top=p.y+'px';
+      b.style.right='auto'; b.style.bottom='auto';
+    } else if(!B16.edit){
+      b.style.position=''; b.style.left=''; b.style.top=''; b.style.right=''; b.style.bottom='';
+    }
   });
   document.getElementById('moveZone').style.transform='none';
 }
@@ -496,7 +502,7 @@ function openSettings(){
 }
 function b16SetMove(v){B16.movement=v;b16Apply();b16Save();toast(v==='zone'?'👆 Свободная зона включена':'🕹️ Джойстик включён')}
 function b16Reset(){B16={...B16_DEFAULT,positions:{}};b16Save();b16Apply();openSettings()}
-function b16SaveAndClose(){B16.edit=false;b16Save();b16Apply();closePanel();toast('💾 Управление сохранено')}
+function b16SaveAndClose(){b16Save();B16.edit=false;b16Apply();b16Save();closePanel();toast('💾 Управление сохранено')}
 function b16EditButtons(){
   B16.edit=true;b16Apply();
   document.getElementById('editHint').style.display='block';
@@ -525,7 +531,7 @@ document.querySelectorAll('#buttons button').forEach((b,i)=>{
       B16.positions[b.id]={x,y};
     }
   },{passive:false});
-  b.addEventListener('touchend',e=>{for(const q of e.changedTouches)b16Active.delete(q.identifier)},{passive:true});
+  b.addEventListener('touchend',e=>{for(const q of e.changedTouches)b16Active.delete(q.identifier);if(B16.edit)b16Save()},{passive:true});
 });
 
 /* Second-finger camera look. First finger remains on movement. */
