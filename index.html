@@ -134,7 +134,7 @@ function setQuest(v){
  if(v.id===1){spawnMob('wolf',360,1020);spawnMob('wolf',650,1020)}
  updateQuestUI();
 }
-const mobXP={wolf:35,alpha:140,bear:110,boar:45,bigboar:95,stone:160};
+const mobXP={wolf:5000,alpha:15000,bear:10000,boar:6000,bigboar:12000,stone:18000};
 function syncAbilityState(){
  if(typeof B17!=='undefined'){ B17.level=p.level; B17.xp=p.xp; b17Save(); }
 }
@@ -146,7 +146,7 @@ function addPlayerXP(amount,reason=''){
 }
 function completeQuest(v){
  if(!v.quest || v.quest.done<v.quest.target)return;
- const reward=v.quest.reward; const xpReward=120+v.id*35;
+ const reward=v.quest.reward; const xpReward=10000+v.id*500;
  p.gold+=reward; v.trust=Math.min(100,v.trust+10); addPlayerXP(xpReward,'quest');
  v.quest=null;if(questState&&questState.villager===v.id)questState=null;
  villagers.forEach(o=>{if(o.id!==v.id)o.trust=Math.min(100,o.trust+1)});
@@ -735,19 +735,42 @@ function b17Damage(m,amount){
 function b17Rock(){ const m=b17NearestEnemy(); b17AnimStart('meteor',.75,p.x,p.y); if(m)setTimeout(()=>b17Damage(m,28),350); b17Toast('🪨 Камень и грязь летят вперёд!'); }
 function b17Fly(){window.b17Flying=!window.b17Flying;b17Toast(window.b17Flying?'🪽 Полёт включён':'🪽 Полёт выключен')}
 function b17EarthLift(){const m=b17NearestEnemy(); if(m){b17AnimStart('earth',.9,m.x,m.y); setTimeout(()=>{if(!m.dead){m.y-=45;b17Damage(m,40)}},400)} else b17AnimStart('earth',.7,p.x+70,p.y); b17Toast('🌍 Земля поднялась под врагом')}
-let b17HandTarget=null,b17HandX=0,b17HandY=0;
+let b17HandTarget=null,b17HandX=0,b17HandY=0,b17HandVX=0,b17HandVY=0,b17HandPointer=null;
 function b17StoneHand(){
-  b17AnimStart('hand',1.1,p.x,p.y);
   window.b17HandActive=true;
+  b17HandX=p.x+85; b17HandY=p.y;
+  b17HandVX=b17HandVY=0;
   document.getElementById('b17HandControls').style.display='flex';
-  b17Toast('✋ Каменная рука: время замедлено');
-  if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)m._b17SlowUntil=Date.now()+5000;
+  b17Toast('✋ Каменная рука активна — управляйте зоной руки');
+  if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)m._b17SlowUntil=Date.now()+300000;
 }
-function b17Grab(){b17HandTarget=b17NearestEnemy();b17Toast(b17HandTarget?'✊ Враг схвачен':'✊ Рядом нет врага')}
+function b17HandNearest(){
+  let best=null,bd=220;
+  if(window.mobs)for(const m of window.mobs){
+    if(!m||m.dead)continue;
+    const d=Math.hypot((m.x||0)-b17HandX,(m.y||0)-b17HandY);
+    if(d<bd){bd=d;best=m}
+  }
+  return best;
+}
+function b17Grab(){
+  if(!window.b17HandActive)return b17Toast('Сначала активируйте Каменную руку');
+  b17HandTarget=b17HandNearest();
+  if(b17HandTarget){
+    b17HandTarget._b17Held=true;
+    b17Toast('✊ Враг схвачен');
+  }else b17Toast('✊ Подведите руку ближе к врагу');
+}
 function b17Throw(){
   if(!b17HandTarget)return b17Toast('Нет схваченного врага');
-  b17Damage(b17HandTarget,999999);
-  b17HandTarget.dead=true;b17HandTarget=null;b17Toast('💨 Враг отброшен далеко!');
+  const m=b17HandTarget;
+  m._b17Held=false;
+  const power=Math.max(1,Math.hypot(b17HandVX,b17HandVY));
+  m.x+=b17HandVX*0.18; m.y+=b17HandVY*0.18;
+  if(power>160)b17Damage(m,999999);
+  else b17Damage(m,Math.min(300,Math.round(80+power)));
+  b17HandTarget=null;
+  b17Toast(power>160?'💨 Враг отброшен далеко!':'💨 Враг выброшен!');
 }
 function b17Meteor(){const m=b17NearestEnemy(); const x=m?.x??p.x,y=m?.y??p.y; b17AnimStart('meteor',1.0,x,y); setTimeout(()=>{if(m){b17Damage(m,90);if(window.mobs)for(const q of window.mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-x,(q.y||0)-y)<110)b17Damage(q,45)}},500); b17Toast('☄️ Каменный метеорит!')}
 function b17MeteorRain(){
@@ -821,6 +844,75 @@ function b171SetNav(i){let l=b171Locations[i];window.b171NavTarget={name:l[0],x:
  window.openSettings=function(){old();setTimeout(()=>{let c=document.getElementById('card');if(c&&!document.getElementById('b171LabelBtn')){let b=document.createElement('button');b.id='b171LabelBtn';b.textContent='🏷️ Переместить надписи';b.onclick=()=>{closePanel();editLabels()};c.appendChild(b)}},20)};
 })();
 </script>
+
+<script id="beta171-hand-fix">
+(function(){
+  const stick=document.getElementById('b17HandStick');
+  if(!stick)return;
+  function worldFromTouch(t){
+    const r=stick.getBoundingClientRect();
+    let nx=(t.clientX-(r.left+r.width/2))/(r.width/2);
+    let ny=(t.clientY-(r.top+r.height/2))/(r.height/2);
+    nx=Math.max(-1,Math.min(1,nx)); ny=Math.max(-1,Math.min(1,ny));
+    const C=cam();
+    const sx=W/2+nx*170, sy=H/2+ny*130;
+    return {x:C.x+sx,y:C.y+sy};
+  }
+  stick.addEventListener('touchstart',function(e){
+    if(!window.b17HandActive)return;
+    const t=e.changedTouches[0]; b17HandPointer=t.identifier;
+    const q=worldFromTouch(t); b17HandVX=(q.x-b17HandX)*8; b17HandVY=(q.y-b17HandY)*8;
+    b17HandX=q.x;b17HandY=q.y;e.preventDefault();
+  },{passive:false});
+  stick.addEventListener('touchmove',function(e){
+    if(b17HandPointer===null)return;
+    for(const t of e.changedTouches)if(t.identifier===b17HandPointer){
+      const q=worldFromTouch(t);
+      b17HandVX=(q.x-b17HandX)*12;b17HandVY=(q.y-b17HandY)*12;
+      b17HandX=q.x;b17HandY=q.y;
+      e.preventDefault();break;
+    }
+  },{passive:false});
+  function end(e){
+    if(b17HandPointer===null)return;
+    for(const t of e.changedTouches)if(t.identifier===b17HandPointer){b17HandPointer=null;break}
+  }
+  stick.addEventListener('touchend',end,{passive:true});
+  stick.addEventListener('touchcancel',end,{passive:true});
+})();
+
+/* Keep a grabbed enemy attached to the hand and draw the hand until deactivated. */
+const _oldB17AnimDraw = b17AnimDraw;
+b17AnimDraw=function(){
+  _oldB17AnimDraw();
+  if(!window.b17HandActive)return;
+  const x=p.x,y=p.y,tx=b17HandX,ty=b17HandY;
+  ctx.save();
+  ctx.strokeStyle='#777c79';ctx.lineWidth=20;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(tx,ty);ctx.stroke();
+  ctx.strokeStyle='#aab0aa';ctx.lineWidth=7;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(tx,ty);ctx.stroke();
+  for(let i=0;i<5;i++){
+    const a=-Math.PI/2+(i-2)*0.32;
+    ctx.strokeStyle='#737a76';ctx.lineWidth=9;
+    ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+Math.cos(a)*30,ty+Math.sin(a)*30);ctx.stroke();
+  }
+  ctx.restore();
+  if(b17HandTarget&&!b17HandTarget.dead){
+    b17HandTarget.x=b17HandX;b17HandTarget.y=b17HandY-28;
+  }
+};
+
+/* Moving the player must not cancel the hand. The hand follows its own world position. */
+setInterval(function(){
+  if(window.b17HandActive){
+    b17HandVX*=0.86;b17HandVY*=0.86;
+    b17HandX=Math.max(40,Math.min(world.w-40,b17HandX+b17HandVX*0.016));
+    b17HandY=Math.max(40,Math.min(world.h-40,b17HandY+b17HandVY*0.016));
+  }
+},16);
+</script>
+
 </body>
 
 </html>
