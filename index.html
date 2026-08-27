@@ -769,11 +769,36 @@ function b17HandNearest(){
 }
 function b17Grab(){
   if(!window.b17HandActive)return b17Toast('Сначала активируйте Каменную руку');
-  b17HandTarget=b17HandNearest();
-  if(b17HandTarget){
-    b17HandTarget._b17Held=true;
-    b17Toast('✊ Враг схвачен');
-  }else b17Toast('✊ Подведите руку ближе к врагу');
+
+  // Select the closest living mob inside the visible hand hitbox.
+  let target=null, best=Infinity;
+  const list=Array.isArray(window.mobs)?window.mobs:[];
+  for(const m of list){
+    if(!m || m.dead || m._b17Held) continue;
+    const mx=Number(m.x), my=Number(m.y);
+    if(!Number.isFinite(mx)||!Number.isFinite(my)) continue;
+
+    const mobR=Math.max(20,Number(m.r||m.radius||m.size||m.hitRadius||35));
+    const d=Math.hypot(mx-b17HandX,my-b17HandY);
+    const allowed=B17_HAND_HITBOX_RADIUS+mobR;
+
+    if(d<=allowed && d<best){
+      best=d;
+      target=m;
+    }
+  }
+
+  if(!target){
+    b17Toast('✊ Враг должен быть внутри жёлтой зоны захвата');
+    return;
+  }
+
+  b17HandTarget=target;
+  target._b17Held=true;
+  target._b17GrabbedByStoneHand=true;
+  target._b17GrabX=b17HandX;
+  target._b17GrabY=b17HandY;
+  b17Toast('✊ Враг схвачен!');
 }
 function b17Throw(){
   if(!b17HandTarget)return b17Toast('Нет схваченного врага');
@@ -929,7 +954,12 @@ b17AnimDraw=function(){
 
   ctx.restore();
   if(b17HandTarget&&!b17HandTarget.dead){
-    b17HandTarget.x=b17HandX;b17HandTarget.y=b17HandY-28;
+    b17HandTarget.x=b17HandX;
+    b17HandTarget.y=b17HandY-28;
+    b17HandTarget.vx=0;
+    b17HandTarget.vy=0;
+    b17HandTarget._b17Held=true;
+    b17HandTarget._b17GrabbedByStoneHand=true;
   }
 };
 
