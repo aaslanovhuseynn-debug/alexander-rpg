@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр RPG — Beta 17</title>
+<title>Александр RPG — Beta 17.1.1</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
@@ -52,10 +52,31 @@ background:#07100df2;border:1px solid #c8d3c2aa;border-radius:12px;display:none;
 #b17HandControls button{font-size:18px;padding:12px 16px;border-radius:14px;border:1px solid #ffffff55;background:#07100ddd;color:#fff}
 #b17HandStick{width:140px;height:110px;border:2px dashed #c8d3c255;border-radius:22px;background:#ffffff08;touch-action:none}
 </style>
+
+<style id="beta171-style">
+#b171-xp{position:fixed;z-index:80;left:10px;top:10px;width:min(290px,58vw);font:600 12px sans-serif;color:#fff;
+background:#07100dcc;border:1px solid #ffffff33;border-radius:12px;padding:8px;pointer-events:none}
+#b171-xpbar{height:7px;background:#ffffff22;border-radius:9px;overflow:hidden;margin-top:5px}
+#b171-xpfill{height:100%;width:0%;background:#fff;transition:width .25s}
+#b171-next{margin-top:4px;opacity:.9}
+#b171-navbtn{position:fixed;z-index:81;right:10px;top:170px;width:52px;height:52px;border-radius:14px;
+border:1px solid #ffffff44;background:#07100dcc;color:#fff;font-size:22px}
+#b171-nav{position:fixed;z-index:100;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,430px);
+max-height:80vh;overflow:auto;background:#07100df5;color:#fff;border:1px solid #ffffff44;border-radius:18px;padding:14px;display:none}
+#b171-nav h3{margin:0 0 8px}.b171-loc{width:100%;margin:5px 0;padding:10px;border-radius:11px;border:1px solid #ffffff22;
+background:#ffffff0d;color:#fff;text-align:left}.b171-loc b{float:right}
+#b171-king{position:fixed;z-index:82;left:10px;bottom:12px;display:none;padding:9px 12px;border-radius:12px;
+background:#07100dcc;color:#fff;border:1px solid #ffffff33}
+#b171-toast{position:fixed;z-index:200;left:50%;top:14%;transform:translateX(-50%);display:none;
+background:#07100df2;color:#fff;border:1px solid #ffffff55;border-radius:12px;padding:10px 14px;font-weight:800;text-align:center}
+#b171-size{margin-top:12px;border:1px solid #ffffff22;border-radius:12px;padding:10px}
+#b171-size select,#b171-size input{max-width:100%}
+#b171-pick{display:none}
+</style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 17</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • Beta 17.1.1</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
 <button id="settingsBtn" onclick="openSettings()" aria-label="Настройки">⚙️</button><button id="b17AbilityOpen" style="position:fixed;z-index:35;right:10px;top:112px;width:48px;height:48px;padding:0;font-size:20px" onclick="b17OpenAbilities()">✨</button>
@@ -450,7 +471,7 @@ document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault
 
 <script>
 /* =========================
-   BETA 17 — BUTTON POSITION SAVE FIX
+   Beta 17.1.1 — BUTTON POSITION SAVE FIX
    BETA 16 — SETTINGS / MULTI-TOUCH
    ========================= */
 const B16_KEY='alexander_rpg_beta16_controls';
@@ -492,7 +513,7 @@ function b16Apply(){
 function b16MaxTouch(){return Math.max(1,Math.min(5,Number(B16.maxTouches)||2))}
 function openSettings(){
   const h=`
-  <h2>⚙️ Настройки управления — Beta 17</h2>
+  <h2>⚙️ Настройки управления — Beta 17.1.1</h2>
   <p><b>Количество пальцев:</b>
   <select id="b16Touches">${[1,2,3,4,5].map(n=>`<option value="${n}" ${B16.maxTouches==n?'selected':''}>${n}</option>`).join('')}</select></p>
   <p><b>Движение:</b>
@@ -612,7 +633,7 @@ b16Apply();
 
 <div id="b17Msg"></div>
 <div id="b17Panel">
-  <h2>✨ Способности Александра — Beta 17</h2>
+  <h2>✨ Способности Александра — Beta 17.1.1</h2>
   <div id="b17Abilities"></div>
   <button onclick="b17CloseAbilities()">Закрыть</button>
 </div>
@@ -624,7 +645,7 @@ b16Apply();
 </div>
 <script>
 /* =========================
-   BETA 17 — ALEXANDER ABILITIES
+   Beta 17.1.1 — ALEXANDER ABILITIES
    ========================= */
 const B17_KEY='alexander_rpg_beta17';
 let B17=JSON.parse(localStorage.getItem(B17_KEY)||'null')||{
@@ -737,6 +758,199 @@ function b17BuildBar(){
 b17BuildBar();
 setInterval(b17BuildBar,1500);
 </script>
+
+<div id="b171-xp">
+  <div><b id="b171-level">Уровень 0</b> · <span id="b171-xptext">0 / 100 XP</span></div>
+  <div id="b171-xpbar"><div id="b171-xpfill"></div></div>
+  <div id="b171-next">Следующая способность: Вытаскивание куска земли — ур. 15</div>
+</div>
+<button id="b171-navbtn" onclick="b171OpenNav()" aria-label="Навигатор">🧭</button>
+<div id="b171-nav">
+  <h3>🧭 Навигатор</h3>
+  <div id="b171-locations"></div>
+  <button onclick="b171CloseNav()">Закрыть</button>
+</div>
+<div id="b171-king">👑 Цель: Король</div>
+<div id="b171-toast"></div>
+
+<script id="beta171-script">
+/* =========================
+   ALEXANDER RPG — BETA 17.1
+   ========================= */
+(function(){
+'use strict';
+
+const KEY='alexander_rpg_beta17_1_state';
+const state=JSON.parse(localStorage.getItem(KEY)||'null')||{
+  level:0,xp:0,buttonSizes:{},target:null,kingMet:false
+};
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function need(lvl){return Math.max(100,100+lvl*35)}
+
+const abilities=[
+ {name:'Бросок камня',lvl:0},{name:'Полёт',lvl:0},
+ {name:'Вытаскивание куска земли',lvl:15},{name:'Каменная рука',lvl:30},
+ {name:'Каменный метеорит',lvl:50},{name:'Метеоритный дождь',lvl:70},
+ {name:'Трансформация',lvl:90},{name:'Измерение',lvl:120}
+];
+
+function toast(t){
+ const e=document.getElementById('b171-toast'); e.textContent=t;e.style.display='block';
+ clearTimeout(window._b171toast);window._b171toast=setTimeout(()=>e.style.display='none',1800);
+}
+function hud(){
+ const n=need(state.level), pct=Math.min(100,state.xp/n*100);
+ document.getElementById('b171-level').textContent='Уровень '+state.level;
+ document.getElementById('b171-xptext').textContent=Math.floor(state.xp)+' / '+n+' XP';
+ document.getElementById('b171-xpfill').style.width=pct+'%';
+ const next=abilities.find(a=>a.lvl>state.level);
+ document.getElementById('b171-next').textContent=next
+   ? 'Следующая способность: '+next.name+' — ур. '+next.lvl+' ('+(next.lvl-state.level)+' ур. осталось)'
+   : 'Все способности разблокированы';
+}
+window.b171AddXP=function(amount,reason){
+ amount=Math.max(0,Number(amount)||0);
+ if(!amount)return;
+ state.xp+=amount;
+ let gained=0;
+ while(state.xp>=need(state.level)){
+   state.xp-=need(state.level);state.level++;gained++;
+ }
+ save();hud();
+ if(gained){
+   const unlocked=abilities.filter(a=>a.lvl>0&&a.lvl<=state.level&&a.lvl>state.level-gained);
+   if(unlocked.length) toast('✨ Разблокировано: '+unlocked.map(a=>a.name).join(', '));
+   else toast('🎉 Уровень '+state.level+'!');
+   if(typeof window.b17BuildBar==='function')window.b17BuildBar();
+ }
+};
+
+const rewards=[
+ [/альфа.?волк|alphawolf/i,130],
+ [/больш.*кабан|bigboar/i,70],
+ [/камен.*монстр|stone/i,100],
+ [/медвед|bear/i,85],
+ [/кабан|boar/i,35],
+ [/волк|wolf/i,25],
+ [/таинствен.*человек|mysterious/i,250]
+];
+function rewardMob(m){
+ if(!m||m._b171xpAwarded)return;
+ if(!(m.dead===true||m.hp<=0||m.health<=0))return;
+ const s=String(m.type||m.kind||m.name||'');
+ for(const [rx,xp] of rewards)if(rx.test(s)){m._b171xpAwarded=true;window.b171AddXP(xp,'mob');break}
+}
+setInterval(()=>{
+ if(Array.isArray(window.mobs))window.mobs.forEach(rewardMob);
+},300);
+
+/* Quest XP API: existing quest completion can call this; legacy quests get a safe default. */
+window.b171QuestReward=function(xp){window.b171AddXP(xp==null?100:xp,'quest')};
+window.b171QuestXP=window.b171QuestReward;
+
+/* Contextual pickaxe: hide it outside the mine. */
+function inMine(){
+ if(window.isInMine===true)return true;
+ if(window.player && (player.inMine===true||player.zone==='mine'||player.area==='mine'))return true;
+ if(typeof window.getCurrentZone==='function'){
+   const z=window.getCurrentZone(); if(z && /mine|шахт/i.test(String(z)))return true;
+ }
+ const p=window.player;if(!p)return false;
+ const zones=[window.mineZone,window.minesZone].filter(Boolean);
+ return zones.some(z=>p.x>=z.x&&p.x<=z.x+z.w&&p.y>=z.y&&p.y<=z.y+z.h);
+}
+function updatePickaxe(){
+ const candidates=[...document.querySelectorAll('button,[role=button]')];
+ const b=document.getElementById('pickaxe')||candidates.find(e=>/⛏|кирк/i.test(e.textContent||''));
+ if(b)b.style.display=inMine()?'':'none';
+}
+setInterval(updatePickaxe,250);
+
+/* Remove obsolete World button. */
+function removeWorld(){
+ document.querySelectorAll('button,[role=button]').forEach(e=>{
+   if(/^\s*(🌍\s*)?мир\s*$/i.test(e.textContent||''))e.remove();
+ });
+}
+setInterval(removeWorld,1000);removeWorld();
+
+/* Per-button sizing in settings. */
+function buttonList(){return [...document.querySelectorAll('button,[role=button]')].filter(e=>e.id!=='b171-navbtn'&&!e.closest('#b171-nav'))}
+function applySizes(){
+ buttonList().forEach((b,i)=>{
+   const k=b.id||('text:'+b.textContent.trim().slice(0,50));
+   const v=Number(state.buttonSizes[k]);
+   if(v&&v!==1)b.style.transform='scale('+v+')';
+ });
+}
+function sizeUI(){
+ const settings=[...document.querySelectorAll('div,section')].find(e=>/настройк|settings/i.test(e.textContent||'')&&e.querySelector('button'));
+ if(!settings||document.getElementById('b171-size'))return;
+ const box=document.createElement('div');box.id='b171-size';
+ box.innerHTML='<b>📐 Размер кнопок</b><br><button id="b171-all">Все</button> <button id="b171-one">Выбрать кнопку</button><div id="b171-editor"></div>';
+ settings.appendChild(box);
+ document.getElementById('b171-all').onclick=()=>{
+   const ed=document.getElementById('b171-editor');
+   ed.innerHTML='<input id="b171-allr" type="range" min=".7" max="1.5" step=".05" value="1"><span id="b171-allv">1.00×</span>';
+   document.getElementById('b171-allr').oninput=e=>{
+     const v=+e.target.value;document.getElementById('b171-allv').textContent=v.toFixed(2)+'×';
+     buttonList().forEach(b=>{const k=b.id||('text:'+b.textContent.trim().slice(0,50));state.buttonSizes[k]=v;b.style.transform='scale('+v+')'});save();
+   };
+ };
+ document.getElementById('b171-one').onclick=()=>{
+   const ed=document.getElementById('b171-editor'),bs=buttonList();
+   ed.innerHTML='<select id="b171-sel">'+bs.map((b,i)=>'<option value="'+i+'">'+(b.textContent.trim()||('Кнопка '+(i+1)))+'</option>').join('')+
+     '</select><br><input id="b171-r" type="range" min=".7" max="1.5" step=".05" value="1"><span id="b171-v">1.00×</span>';
+   const sel=document.getElementById('b171-sel'),r=document.getElementById('b171-r');
+   function sync(){const b=bs[+sel.value];const k=b.id||('text:'+b.textContent.trim().slice(0,50));const v=Number(state.buttonSizes[k]||1);r.value=v;document.getElementById('b171-v').textContent=v.toFixed(2)+'×'}
+   sel.onchange=sync;
+   r.oninput=e=>{const b=bs[+sel.value],v=+e.target.value,k=b.id||('text:'+b.textContent.trim().slice(0,50));state.buttonSizes[k]=v;b.style.transform='scale('+v+')';document.getElementById('b171-v').textContent=v.toFixed(2)+'×';save()};
+   sync();
+ };
+}
+setInterval(sizeUI,700);setInterval(applySizes,1000);
+
+/* Navigator. Locations are data, so Beta 18 can add more without changing the UI. */
+const locations=[
+ {name:'Король',x:300,y:300,story:true},
+ {name:'Деревня',x:0,y:0},
+ {name:'Шахта',x:900,y:250},
+ {name:'Поле Ильи',x:600,y:700},
+ {name:'Зона сражения',x:1150,y:650},
+ {name:'Таинственный человек',x:1450,y:350}
+];
+function pos(){return window.player?{x:Number(player.x)||0,y:Number(player.y)||0}:{x:0,y:0}}
+window.b171OpenNav=function(){
+ const p=pos(),box=document.getElementById('b171-locations');
+ box.innerHTML=locations.map((l,i)=>{
+   const d=Math.round(Math.hypot(l.x-p.x,l.y-p.y));
+   return '<button class="b171-loc" onclick="b171SetTarget('+i+')">'+l.name+' <b>'+d+' px</b></button>';
+ }).join('');
+ document.getElementById('b171-nav').style.display='block';
+};
+window.b171CloseNav=function(){document.getElementById('b171-nav').style.display='none'};
+window.b171SetTarget=function(i){
+ const l=locations[i];state.target={name:l.name,x:l.x,y:l.y};save();
+ window.b171CloseNav();toast('🧭 Цель: '+l.name);
+ updateTargetMarker();
+};
+function updateTargetMarker(){
+ const k=document.getElementById('b171-king');
+ k.style.display=state.target?'block':'none';
+ if(state.target)k.textContent='🧭 Цель: '+state.target.name;
+}
+setInterval(()=>{
+ if(!state.target||!window.player)return;
+ const p=pos(),d=Math.hypot(state.target.x-p.x,state.target.y-p.y);
+ if(d<60){toast('📍 Вы прибыли: '+state.target.name);state.target=null;save();updateTargetMarker()}
+},300);
+
+/* First story target: the king, no arrow until a real target exists. */
+window.b171MeetKing=function(){state.kingMet=true;state.target=null;save();toast('👑 Король: новое задание!')};
+hud();updateTargetMarker();updatePickaxe();removeWorld();applySizes();
+})();
+</script>
+
 </body>
 
 </html>
