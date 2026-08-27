@@ -35,7 +35,7 @@ button:active{transform:scale(.95);background:#41553f}
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 15</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 15 • STORY UPDATE</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="buttons">
@@ -56,11 +56,15 @@ let W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1);
 function resize(){W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
 
 const world={w:3600,h:2400};
-const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false};
+const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false,gold:0};
 const bags={'Начальный (маленький)':20,'Средний':30,'Большой':50,'Очень большой':80,'Гигантский':150};
 const target={x:430,y:690};
 const keys={},joy={x:0,y:0};let paused=false,attack=0,attackKind='',pickA=0,time=0,last=performance.now();
 let notes=[],ores=[],traders=[],butterflies=[],particles=[];
+let mobs=[],mobGroups=0,spawnTimer=0,storyStage=0,storyMetWagon=false,quest=null;
+const mobLimits={boarPack:2,bigBoar:1,stoneMonster:1,wolfPack:3,alphaWolf:2,bear:2};
+const trust={Илья:0,Борис:0,Марк:0,Роман:0,Лев:0,Степан:0,Данил:0,Олег:0,Фёдор:0,Пётр:0};
+const mobNames={boarPack:'Стая кабанов',bigBoar:'Большой кабан',stoneMonster:'Каменный монстр',wolfPack:'Стая волков',alphaWolf:'Альфа-волк',bear:'Медведь'};
 let combat={type:'',t:0,duration:0,phase:0};
 let villagers=[
  {id:1,name:'Илья',role:'Фермер',color:'#2f6fb0',x:3200,y:980},
@@ -100,7 +104,7 @@ setTimeout(()=>toast('🏘️ Жители деревни появились'),9
 
 function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1250)}
 function nextXP(){return 100+p.level*10}
-function hud(){document.getElementById('hud').innerHTML='<b>Александр</b><br>Уровень: '+p.level+' • XP: '+Math.floor(p.xp)+' / '+nextXP()+'<br>'+p.dirt.toFixed(1)+'🟫, '+p.stone.toFixed(1)+'🪨 / '+p.cap+'<br>🎒 '+p.bag}
+function hud(){document.getElementById('hud').innerHTML='<b>Александр</b><br>Уровень: '+p.level+' • XP: '+Math.floor(p.xp)+' / '+nextXP()+'<br>🪙 '+p.gold+' золотых<br>'+p.dirt.toFixed(1)+'🟫, '+p.stone.toFixed(1)+'🪨 / '+p.cap+'<br>🎒 '+p.bag+(quest?'<br>📜 '+quest.text:'')}
 function note(x,y,t){notes.push({x,y,t,l:1})}
 function addRes(type,n){let room=Math.max(0,p.cap-p.dirt-p.stone),g=Math.min(n,room);if(!g){toast('🎒 Мешок заполнен');return}p[type]+=g;note(p.x+Math.random()*80-40,p.y-45,'+'+g+(type==='stone'?'🪨':'🟫'));hud()}
 function spend(a,b){if(p.dirt<a||p.stone<b){toast('⚠️ Недостаточно ресурсов');return false}p.dirt-=a;p.stone-=b;hud();return true}
@@ -124,35 +128,86 @@ function rock(){
 function flight(){if(p.fly){p.fly=false;toast('🌀 Полёт выключен');return}if(p.dirt<.5||p.stone<.5){toast('⚠️ Нужно 0.5🟫 и 0.5🪨');return}p.fly=true;toast('🌀 Полёт включён')}
 function mineResource(){let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<85);if(!o){toast('⛏️ Подойди к руде');return}p.dir=Math.atan2(o.y-p.y,o.x-p.x);pickA=.75;o.h--;toast('⛏️ Удар киркой');note(o.x,o.y-45,'Осталось ударов: '+o.h);if(o.h<=0){let r=Math.random(),n=r<.65?1:r<.9?2:3;note(o.x,o.y-70,n===1?'Маленький кусок':n===2?'Средний кусок':'Большой кусок');addRes(o.type,n);o.h=o.max}}
 function interact(){
+  // Story wagon: fixed point near the wagon.
+  if(Math.hypot(p.x-1510,p.y-1400)<150){wagonTalk();return}
   const near=npcWorldPositions().find(item=>Math.hypot(p.x-item.x,p.y-item.y)<65);
   if(near){
     const v=near.v;
-    open('💬 '+v.name,'<p><b>'+v.role+'</b></p><p>Привет, Александр! Добро пожаловать в наше королевство.</p><p>Я живу здесь и могу рассказать тебе о деревне.</p>');
-    return;
+    if(v.id===1){open('💬 '+v.name,'<p><b>'+v.role+'</b></p><p>«Александр, помоги мне с урожаем!»</p><button onclick="acceptIlyaQuest()">📜 Взять квест: защитить урожай</button><p>❤️ Доверие: '+(trust[v.name]||0)+'/100</p>');return}
+    open('💬 '+v.name,'<p><b>'+v.role+'</b></p><p>Привет, Александр! Добро пожаловать в наше королевство.</p><p>❤️ Доверие: '+(trust[v.name]||0)+'/100</p>');return;
   }
-
-  // Beta 15: when Alexander is in the village center, choose the nearest visible resident.
-  if(p.x>2600 && p.x<4800 && p.y>700 && p.y<1250){
-    let nearest=Math.floor((Math.abs(p.x-3600)/260))%villagers.length;
-    let v=villagers[Math.max(0,Math.min(villagers.length-1,nearest))];
-  
- let d=Math.hypot(p.x-target.x,p.y-target.y);
- if(d<170){open('👑 Королевский зал','<p>Просторная высокая постройка из мрамора с золотой крышей и большими окнами. Снаружи — цветы и кусты.</p><p>Внутри красный ковёр ведёт к ступеням и королевскому креслу: красная кожа, золотые края, высокая спинка и подлокотники.</p><p>Рядом стоят гвардейцы с копьями, а на кресле сидит король.</p>');return}
- let tr=traders.find(t=>Math.hypot(p.x-t.x,p.y-t.y)<120);
- if(tr){open('🛒 Таинственный торговец',`<p>Торговец резко раскрывает тёмное платье — внутри спрятаны товары.</p><button onclick="buy(500,30,'Средний')">Средний — 500 XP</button><button onclick="buy(777,50,'Большой')">Большой — 777 XP</button><br><button onclick="buy(1000,80,'Очень большой')">Очень большой — 1000 XP</button><button onclick="buy(1500,150,'Гигантский')">Гигантский — 1500 XP</button>`);return}
- 
-  let nearVillager=villagers.find(v=>Math.hypot(p.x-v.x,p.y-v.y)<85);
-  if(nearVillager){
-    let isTraitor=traitorIds.has(nearVillager.id);
-    open('💬 '+nearVillager.name,
-      '<p><b>'+nearVillager.role+'</b></p>'+
-      '<p>'+ (isTraitor ? 'Житель дружелюбно разговаривает с Александром. Он кажется надёжным.' : 'Житель занят своими делами и приветствует Александра.') +'</p>'+
-      '<p>Сейчас он выглядит совершенно обычным жителем деревни.</p>');
-    return;
-  }
-let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mineResource();return}
+  let tr=traders.find(t=>Math.hypot(p.x-t.x,p.y-t.y)<120);
+  if(tr){open('🛒 Таинственный торговец',`<p>Товары теперь покупаются за золотые монеты.</p><button onclick="buyGold(500,30,'Средний')">Средний — 500 🪙</button><button onclick="buyGold(900,50,'Большой')">Большой — 900 🪙</button><br><button onclick="buyGold(1400,80,'Очень большой')">Очень большой — 1400 🪙</button><button onclick="buyGold(2500,150,'Гигантский')">Гигантский — 2500 🪙</button>`);return}
+  let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mineResource();return}
 }
-function buy(cost,cap,name){if(p.xp<cost){toast('❌ Опыта недостаточно');return}p.xp-=cost;p.cap=cap;p.bag=name;hud();toast('🎒 Куплен '+name);closePanel()}
+function buyGold(cost,cap,name){if(p.gold<cost){toast('❌ Недостаточно золотых');return}p.gold-=cost;p.cap=cap;p.bag=name;hud();toast('🎒 Куплен '+name);closePanel()}
+function buy(cost,cap,name){buyGold(cost,cap,name)}
+
+
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function countMob(type){return mobs.filter(m=>m.type===type&&m.alive).length}
+function validSpawnPoint(type){
+  for(let i=0;i<40;i++){
+    let x=120+Math.random()*(world.w-240), y=120+Math.random()*(world.h-240);
+    if(type==='stoneMonster'){if(!(x>600&&x<1210&&y>135&&y<545))continue}
+    else if(type==='wolfPack'||type==='alphaWolf'){if(x<1250||y>2250)continue}
+    else if(type==='boarPack'||type==='bigBoar'){if(x<1100||x>3300||y<600||y>2200)continue}
+    else if(type==='bear'){if(x<1300||y<150||y>2250)continue}
+    if(Math.hypot(p.x-x,p.y-y)<260)continue;
+    if(Math.hypot(1510-x,1410-y)<230)continue;
+    return {x,y};
+  }
+  return null;
+}
+function spawnMob(type,fromQuest=false){
+  if(type!=='story'){ if(countMob(type)>=mobLimits[type])return false; }
+  let pos=validSpawnPoint(type); if(!pos)return false;
+  let m={type,x:pos.x,y:pos.y,alive:true,hp:100,maxHp:100,phase:Math.random()*6.28,packId:null};
+  if(type==='wolfPack'||type==='boarPack'){
+    m.members=type==='wolfPack'?3+Math.floor(Math.random()*3):3+Math.floor(Math.random()*3);
+    m.hp=120;m.maxHp=120;
+  } else if(type==='alphaWolf'){m.hp=260;m.maxHp=260}
+  else if(type==='bigBoar'){m.hp=400;m.maxHp=400}
+  else if(type==='stoneMonster'){m.hp=900;m.maxHp=900}
+  else if(type==='bear'){m.hp=420;m.maxHp=420}
+  mobs.push(m);
+  toast('⚠️ '+mobNames[type]+' появился');
+  return true;
+}
+function randomSpawnTick(){
+  const candidates=Object.keys(mobLimits).filter(t=>countMob(t)<mobLimits[t]);
+  if(!candidates.length||Math.random()>=.40)return;
+  const type=candidates[Math.floor(Math.random()*candidates.length)];
+  spawnMob(type);
+}
+function completeQuest(){
+  if(!quest)return;
+  const v=villagers.find(v=>v.id===quest.villagerId); const reward=quest.reward;
+  p.gold+=reward; trust[v.name]=Math.min(100,(trust[v.name]||0)+quest.trust);
+  note(p.x,p.y-55,'+'+reward+' 🪙'); toast('📜 Квест выполнен! +'+reward+' 🪙');
+  quest=null; storyStage=Math.max(storyStage,1); hud();
+}
+function acceptIlyaQuest(){
+  if(quest){toast('📜 Сначала выполни текущий квест');return}
+  quest={villagerId:1,text:'Защити урожай Ильи',reward:250,trust:8,targetType:'boarPack',kills:0,need:1};
+  spawnMob('boarPack',true); closePanel(); toast('📜 Илья: «Александр, защити мой урожай!»');
+}
+function wagonTalk(){
+  storyMetWagon=true;
+  if(storyStage===0)storyStage=1;
+  open('🛒 Таинственная повозка',`<p>Рядом с повозкой стоит <b>Таинственный человек</b>.</p><p><b>Александр:</b> «Эй. Ты кто?»</p><p><b>Таинственный человек:</b> «Человек, который слишком долго идёт по одной дороге.»</p><p><b>Александр:</b> «А эта повозка твоя?»</p><p><b>Таинственный человек:</b> «Когда-то была.»</p><p><b>Александр:</b> «Что ты здесь делаешь?»</p><p><b>Таинственный человек:</b> «Жду.»</p><p><b>Александр:</b> «Кого?»</p><p><b>Таинственный человек:</b> «Пока не знаю.»</p><p><b>Александр:</b> «Ты знаешь дорогу к замку?»</p><p><b>Таинственный человек:</b> «Знаю. Но тебе нужно найти её самому.»</p><p><b>Александр:</b> «Мы ещё встретимся?»</p><p><b>Таинственный человек:</b> «Если ты продолжишь идти — обязательно.»</p>`);
+}
+function startVillageQuest(){
+  const v=villagers.find(v=>v.id===1);
+  if(Math.hypot(p.x-(3200),p.y-980)<200){open('💬 Илья','<p><b>Фермер</b></p><p>«Александр, защити мой урожай!»</p><button onclick="acceptIlyaQuest()">Принять квест</button>');return true}
+  return false;
+}
+function updateQuestProgress(){
+  if(!quest)return;
+  const targetMobs=mobs.filter(m=>!m.alive&&m.questTagged);
+  if(quest.targetType==='boarPack' && targetMobs.length>=quest.need)completeQuest();
+}
+function markQuestMob(m){if(quest&&m.type===quest.targetType)m.questTagged=true}
 
 function setup(){
  ores=[
@@ -202,6 +257,49 @@ function wagon(){rect(1415,1365,185,95,'#70472f','#c9a45d');circ(1450,1477,28,'#
 function ore(o){let col=o.type==='stone'?'#aab2ae':'#855b3c';poly([[o.x-35,o.y+22],[o.x-22,o.y-28],[o.x+12,o.y-42],[o.x+40,o.y-5],[o.x+28,o.y+32]],col,'#313732');label(o.x,o.y+60,'⛏️ '+o.h,11)}
 function trader(t){circ(t.x,t.y,28,'#111514','#aab3a8');poly([[t.x-40,t.y-5],[t.x,t.y-65],[t.x+40,t.y-5],[t.x+30,t.y+45],[t.x-30,t.y+45]],'#090a0a');label(t.x,t.y+68,'ТОРГОВЕЦ',10)}
 function butterfly(b){b.a+=.018;let x=b.x+Math.sin(b.a)*35,y=b.y+Math.cos(b.a*.8)*24;ctx.strokeStyle=['#ffd34d','#64b8ff','#d28cff','#ff8bb7','#8be36b'][Math.floor(b.a*2)%5]+'88';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-Math.cos(b.a)*25,y-Math.sin(b.a)*25);ctx.stroke();circ(x-6,y,5,'#f1e6b0');circ(x+6,y,5,'#f1e6b0');circ(x,y,3,'#333')}
+
+function drawMob(m){
+  if(!m.alive)return;
+  const bob=Math.sin(time*2+m.phase)*2;
+  if(m.type==='wolfPack'||m.type==='alphaWolf'){
+    const n=m.type==='wolfPack'?m.members:1;
+    for(let i=0;i<n;i++){
+      let a=i*Math.PI*2/n+m.phase*.12, r=m.type==='wolfPack'?28:0;
+      let x=m.x+Math.cos(a)*r,y=m.y+Math.sin(a)*r+bob;
+      circ(x,y,17,'#777','#222');circ(x+10,y-7,7,'#777','#222');
+      label(x,y-27,m.type==='alphaWolf'?'👑🐺':'🐺',12);
+    }
+  } else if(m.type==='bear'){
+    circ(m.x,m.y+bob,32,'#5b4637','#2b211b');circ(m.x,m.y-30+bob,23,'#5b4637','#2b211b');
+    label(m.x,m.y+55,'🐻',18);
+  } else if(m.type==='bigBoar'){
+    circ(m.x,m.y+bob,30,'#6b4a32','#281b13');circ(m.x+25,m.y-5+bob,17,'#6b4a32','#281b13');label(m.x,m.y+50,'🐗',18);
+  } else if(m.type==='boarPack'){
+    for(let i=0;i<m.members;i++){let a=i*Math.PI*2/m.members,r=30;label(m.x+Math.cos(a)*r,m.y+Math.sin(a)*r+bob,'🐗',16)}
+  } else if(m.type==='stoneMonster'){
+    circ(m.x,m.y+bob,48,'#68716d','#2c312f');poly([[m.x-32,m.y-35+bob],[m.x-5,m.y-62+bob],[m.x+38,m.y-30+bob],[m.x+25,m.y+32+bob],[m.x-35,m.y+30+bob]],'#747d78','#303633');label(m.x,m.y+72,'🪨',20);
+  }
+  if(m.hp<m.maxHp){ctx.fillStyle='#111';ctx.fillRect(m.x-35,m.y-65,70,6);ctx.fillStyle='#e56';ctx.fillRect(m.x-35,m.y-65,70*Math.max(0,m.hp/m.maxHp),6)}
+}
+function updateMobs(dt){
+  for(const m of mobs){if(!m.alive)continue;
+    m.phase+=dt;
+    const d=Math.hypot(p.x-m.x,p.y-m.y);
+    const speed=m.type==='stoneMonster'?20:m.type==='bear'?45:m.type==='bigBoar'?75:95;
+    if(d>110){m.x+=(p.x-m.x)/d*speed*dt;m.y+=(p.y-m.y)/d*speed*dt}
+    if(d<75 && Math.random()<dt*.22){
+      const dmg=m.type==='stoneMonster'?35:m.type==='bear'?28:m.type==='bigBoar'?32:20;
+      // Enemy attack is represented visually by a red warning area.
+      m.warn=.7;m.warnX=p.x;m.warnY=p.y;
+      if(Math.random()<.45) toast('🔴 '+mobNames[m.type]+' атакует!');
+      if(Math.random()<.18){m.alive=false;markQuestMob(m);toast('⚔️ '+mobNames[m.type]+' повержен');}
+    }
+    if(m.warn){m.warn-=dt;if(m.warn<=0)m.warn=0}
+  }
+  mobs=mobs.filter(m=>m.alive||m.questTagged);
+}
+function drawMobWarnings(){for(const m of mobs){if(m.warn>0){ctx.save();ctx.globalAlpha=Math.min(.28,m.warn*.35);ctx.fillStyle='#f33';ctx.beginPath();ctx.arc(m.warnX,m.warnY,42,0,Math.PI*2);ctx.fill();ctx.restore()}}}
+
 function player(){
   circ(p.x,p.y,21,'#b97850','#2a201b');
   circ(p.x,p.y-28,15,'#68402b');
@@ -287,9 +385,11 @@ function draw(){
  for(let i=0;i<12;i++){let x=180+(i%4)*150,y=1100+Math.floor(i/4)*145;house(x,y)}
  label(520,1070,'СРЕДНЕВЕКОВАЯ ДЕРЕВНЯ',18);
  castle();renderMine();tower();wagon();
+  // Taинственный человек находится рядом с повозкой и не участвует в случайном спавне.
+  circ(1510,1385,18,'#3b596b','#10191f');label(1510,1355,'🧙',18);label(1510,1325,'ТАИНСТВЕННЫЙ',11);
  circ(1850,980,130,'#1b332955','#9bb59c');label(1850,835,'МЕСТО БИТВЫ',14);
  circ(2050,1120,115,'#18373b55','#83c0c8');label(2050,980,'ТАИНСТВЕННЫЙ',14);
- ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);drawVillagers();
+ ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);mobs.forEach(drawMob);drawMobWarnings();drawVillagers();
 player();
  ctx.restore();
  ctx.save();ctx.translate(-C.x,-C.y);notes.forEach(n=>{ctx.globalAlpha=n.l;label(n.x,n.y,n.t,14)});ctx.restore();
@@ -297,13 +397,16 @@ player();
 function update(dt){
  if(paused)return;
  time+=dt;move(dt);attack=Math.max(0,attack-dt);pickA=Math.max(0,pickA-dt);
+  spawnTimer+=dt;if(spawnTimer>=30){spawnTimer-=30;randomSpawnTick()}
+  updateMobs(dt);updateQuestProgress();
  if(combat.t>0 || combat.duration>0){
    combat.t+=dt;
    combat.phase=Math.min(1,combat.t/combat.duration);
    if(combat.t>=combat.duration){combat.duration=0;combat.t=0}
  }
  notes.forEach(n=>{n.l-=dt;n.y-=18*dt});notes=notes.filter(n=>n.l>0);hud();
- let C=cam(),sx=target.x-C.x,sy=target.y-C.y,ang=Math.atan2(sy-H/2,sx-W/2),ar=document.getElementById('arrow');
+ let C=cam(),goal=quest?{x:p.x,y:p.y}:target,sx=goal.x-C.x,sy=goal.y-C.y,ang=Math.atan2(sy-H/2,sx-W/2),ar=document.getElementById('arrow');
+  document.getElementById('quest').textContent=quest?'📜 Квест: '+quest.text:'👑 Цель: королевский замок';
  if(Math.hypot(sx-W/2,sy-H/2)<180)ar.style.display='none';
  else{ar.style.display='block';ar.style.left=(W/2+Math.cos(ang)*Math.min(W,H)*.37)+'px';ar.style.top=(H/2+Math.sin(ang)*Math.min(W,H)*.37)+'px';ar.style.transform='translate(-50%,-50%) rotate('+ang+'rad)'}
 }
