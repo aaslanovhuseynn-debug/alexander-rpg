@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр RPG — Beta 15.5.5</title>
+<title>Александр RPG — Beta 16</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
@@ -11,6 +11,9 @@ canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}
 #hud{position:fixed;z-index:20;left:10px;top:max(8px,env(safe-area-inset-top));padding:9px 11px;background:#07100ddd;border:1px solid #c8d3c288;border-radius:12px;font-size:12px;line-height:1.45;text-shadow:1px 1px #000;pointer-events:none}
 #title{position:fixed;z-index:20;right:10px;top:max(8px,env(safe-area-inset-top));padding:8px 11px;background:#07100ddd;border:1px solid #c8d3c288;border-radius:12px;font-weight:900;font-size:12px;pointer-events:none}
 #quest{position:fixed;z-index:20;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);padding:8px 12px;background:#07100ddd;border:1px solid #d4c47b99;border-radius:12px;font-size:12px;font-weight:900;pointer-events:none;white-space:nowrap}
+#settingsBtn{position:fixed;z-index:35;right:10px;top:58px;width:48px;height:48px;padding:0;font-size:20px}
+#moveZone{position:fixed;z-index:29;left:10px;bottom:max(10px,env(safe-area-inset-bottom));width:190px;height:150px;border:2px dashed #c7d4c055;border-radius:28px;background:#07100b22;display:none;touch-action:none}
+#editHint{position:fixed;z-index:80;left:50%;top:10%;transform:translateX(-50%);padding:10px 14px;background:#07100df0;border:1px solid #c8d3c2aa;border-radius:12px;display:none;font-weight:900}
 #buttons{position:fixed;z-index:30;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:min(250px,43vw)}
 button{border:1px solid #c8d3c2;background:#172219ed;color:#fff;border-radius:14px;padding:11px 8px;font-weight:900;font-size:12px;box-shadow:0 6px 16px #0009}
 button:active{transform:scale(.95);background:#41553f}
@@ -28,16 +31,19 @@ button:active{transform:scale(.95);background:#41553f}
 #combatLabel{position:fixed;z-index:56;left:50%;top:38%;transform:translate(-50%,-50%) scale(.7);font-size:28px;font-weight:1000;text-shadow:0 3px 10px #000;opacity:0;pointer-events:none;transition:.16s}
 #combatLabel.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
-/* Beta 15.5.5 — Living World NPCs */
+/* Beta 14 — Living World NPCs */
 .npcTag{font-weight:900;text-shadow:0 2px 5px #000}
 .traitorHint{color:#ff7777;font-weight:900}
 </style>
+<style>html,body,#game{touch-action:none;-webkit-user-select:none;user-select:none}</style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 15.5</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 16</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
+<button id="settingsBtn" onclick="openSettings()" aria-label="Настройки">⚙️</button>
+<div id="moveZone"></div><div id="editHint">🛠️ Перетащите кнопки • Нажмите «Сохранить»</div>
 <div id="buttons">
 <button onclick="interact()">◉ Взаимодействие</button>
 <button onclick="sword()">⚔️ Меч</button>
@@ -56,25 +62,87 @@ let W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1);
 function resize(){W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
 
 const world={w:3600,h:2400};
-const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false};
+const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false,gold:0,hp:100,maxHp:100};
 const bags={'Начальный (маленький)':20,'Средний':30,'Большой':50,'Очень большой':80,'Гигантский':150};
 const target={x:430,y:690};
 const keys={},joy={x:0,y:0};let paused=false,attack=0,attackKind='',pickA=0,time=0,last=performance.now();
 let notes=[],ores=[],traders=[],butterflies=[],particles=[];
 let combat={type:'',t:0,duration:0,phase:0};
-let villagers=[
- {id:1,name:'Илья',role:'Фермер',color:'#2f6fb0',x:3200,y:980},
- {id:2,name:'Борис',role:'Лесоруб',color:'#3f8f52',x:3370,y:1050},
- {id:3,name:'Марк',role:'Торговец',color:'#d6b52e',x:3510,y:930},
- {id:4,name:'Роман',role:'Кузнец',color:'#a83b3b',x:3650,y:1090},
- {id:5,name:'Лев',role:'Алхимик',color:'#7445a8',x:3790,y:960},
- {id:6,name:'Степан',role:'Шахтёр',color:'#76513a',x:3930,y:1080},
- {id:7,name:'Данил',role:'Целитель',color:'#e8e8e8',x:4070,y:940},
- {id:8,name:'Олег',role:'Охотник',color:'#d47b24',x:4210,y:1060},
- {id:9,name:'Фёдор',role:'Рыбак',color:'#4aa8c7',x:4350,y:950},
- {id:10,name:'Пётр',role:'Пекарь',color:'#d889a9',x:4490,y:1070}
-];
 let traitorCount=0, traitorIds=new Set();
+// ===== BETA 15: жители, золото, квесты, доверие и мобы =====
+const QUEST_REWARD_MIN=50, QUEST_REWARD_MAX=500;
+const villagers=[
+ {id:1,name:'Илья',role:'Фермер',color:'#2f6fb0',x:420,y:1130,trust:0,quest:null},
+ {id:2,name:'Борис',role:'Лесоруб',color:'#3f8f52',x:575,y:1130,trust:0,quest:null},
+ {id:3,name:'Марк',role:'Торговец',color:'#d6b52e',x:730,y:1130,trust:0,quest:null},
+ {id:4,name:'Роман',role:'Кузнец',color:'#a83b3b',x:420,y:1275,trust:0,quest:null},
+ {id:5,name:'Лев',role:'Алхимик',color:'#7445a8',x:575,y:1275,trust:0,quest:null},
+ {id:6,name:'Степан',role:'Шахтёр',color:'#76513a',x:730,y:1275,trust:0,quest:null},
+ {id:7,name:'Данил',role:'Целитель',color:'#e8e8e8',x:420,y:1420,trust:0,quest:null},
+ {id:8,name:'Олег',role:'Охотник',color:'#d47b24',x:575,y:1420,trust:0,quest:null},
+ {id:9,name:'Фёдор',role:'Рыбак',color:'#4aa8c7',x:730,y:1420,trust:0,quest:null},
+ {id:10,name:'Пётр',role:'Пекарь',color:'#d889a9',x:575,y:1565,trust:0,quest:null}
+];
+const mobDefs={
+ wolf:{name:'Волк',hp:55,maxHp:55,speed:150,damage:10,range:70,windup:.7,cooldown:1,turn:.9},
+ alpha:{name:'Альфа-волк',hp:190,maxHp:190,speed:125,damage:20,range:82,windup:.9,cooldown:1.4,turn:.65},
+ bear:{name:'Медведь',hp:240,maxHp:240,speed:75,damage:28,range:92,windup:1.1,cooldown:1.8,turn:.45},
+ boar:{name:'Кабан',hp:80,maxHp:80,speed:205,damage:18,range:105,windup:.8,cooldown:1.5,turn:.25},
+ bigboar:{name:'Большой кабан',hp:260,maxHp:260,speed:180,damage:34,range:115,windup:1,cooldown:2,turn:.18},
+ stone:{name:'Каменный монстр',hp:320,maxHp:320,speed:48,damage:32,range:115,windup:1.25,cooldown:2.3,turn:.35}
+};
+let mobs=[],spawnTimer=0,questState=null,attackWarnings=[],mysterious={x:1510,y:1260,met:false};
+const mobCaps={boar:2,bigboar:1,stone:1,wolf:3,alpha:2,bear:2};
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function countType(t){return mobs.filter(m=>m.type===t).length}
+function spawnMob(type,x,y){
+ const d=mobDefs[type]; if(!d || countType(type)>=mobCaps[type]) return false;
+ mobs.push({type,x,y,hp:d.hp,maxHp:d.maxHp,speed:d.speed,damage:d.damage,range:d.range,windup:d.windup,cooldown:d.cooldown,turn:d.turn,cd:Math.random(),warn:0,attackT:0,attackAngle:0,state:'idle',special:0});
+ return true;
+}
+function randomMobSpawn(){
+ const eligible=Object.keys(mobCaps).filter(t=>countType(t)<mobCaps[t]);
+ if(!eligible.length)return;
+ const type=eligible[Math.floor(Math.random()*eligible.length)];
+ const zones={
+  wolf:[1250,900,500,700],alpha:[1250,900,700,900],bear:[1000,800,1000,700],
+  boar:[850,1500,700,650],bigboar:[900,1450,900,650],stone:[650,220,560,350]
+ };
+ const z=zones[type]; let x=z[0]+Math.random()*z[2],y=z[1]+Math.random()*z[3];
+ spawnMob(type,x,y);
+}
+function setQuest(v){
+ const q=v.id===1?{type:'defend',text:'Защити мой урожай от волков',target:2,done:0,reward:Math.floor(QUEST_REWARD_MIN+Math.random()*(QUEST_REWARD_MAX-QUEST_REWARD_MIN+1))}: {type:'hunt',text:'Помоги королевству: победи 1 дикого зверя',target:1,done:0,reward:Math.floor(QUEST_REWARD_MIN+Math.random()*(QUEST_REWARD_MAX-QUEST_REWARD_MIN+1))};
+ v.quest=q; questState={villager:v.id,q};
+ if(v.id===1){spawnMob('wolf',360,1020);spawnMob('wolf',650,1020)}
+ updateQuestUI();
+}
+function completeQuest(v){
+ if(!v.quest || v.quest.done<v.quest.target)return;
+ const reward=v.quest.reward;p.gold+=reward;v.trust=Math.min(100,v.trust+10);
+ v.quest=null;if(questState&&questState.villager===v.id)questState=null;
+ // small word-of-mouth effect
+ villagers.forEach(o=>{if(o.id!==v.id)o.trust=Math.min(100,o.trust+1)});
+ toast('🪙 +'+reward+' золотых • ❤️ доверие '+v.name+' +10');
+ updateQuestUI();hud();
+}
+function damageMob(m,amount){
+ m.hp-=amount;note(m.x,m.y-55,'-'+Math.round(amount)+' HP');
+ if(m.hp<=0){mobs=mobs.filter(x=>x!==m);p.xp+=10; if(questState){questState.q.done++;if(questState.q.done>=questState.q.target){let v=villagers.find(v=>v.id===questState.villager);if(v)completeQuest(v);}} toast('⚔️ '+mobDefs[m.type].name+' побеждён');}
+ hud();
+}
+function playerAttackHit(){
+ const range=125, cone=.95;
+ mobs.slice().forEach(m=>{const d=dist(p,m),a=Math.atan2(m.y-p.y,m.x-p.x);let da=Math.atan2(Math.sin(a-p.dir),Math.cos(a-p.dir));if(d<range&&Math.abs(da)<cone)damageMob(m,35)});
+ if(questState&&questState.q.type==='hunt'&&questState.q.done>=questState.q.target){let v=villagers.find(v=>v.id===questState.villager);if(v)completeQuest(v)}
+}
+function playerRockHit(){
+ const range=390;
+ let best=null,bd=1e9;
+ mobs.forEach(m=>{let d=dist(p,m),a=Math.atan2(m.y-p.y,m.x-p.x),da=Math.atan2(Math.sin(a-p.dir),Math.cos(a-p.dir));if(d<range&&Math.abs(da)<.35&&d<bd){best=m;bd=d}});
+ if(best)damageMob(best,24);
+}
+
 function chooseTraitors(){
   // 0..3 traitors, with fewer traitors more common.
   let r=Math.random();
@@ -91,14 +159,14 @@ setTimeout(()=>toast('🏘️ Жители деревни появились'),9
 
 function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1250)}
 function nextXP(){return 100+p.level*10}
-function hud(){document.getElementById('hud').innerHTML='<b>Александр</b><br>Уровень: '+p.level+' • XP: '+Math.floor(p.xp)+' / '+nextXP()+'<br>'+p.dirt.toFixed(1)+'🟫, '+p.stone.toFixed(1)+'🪨 / '+p.cap+'<br>🎒 '+p.bag}
+function hud(){document.getElementById('hud').innerHTML='<b>Александр</b><br>❤️ '+Math.max(0,Math.ceil(p.hp))+' / '+p.maxHp+'<br>Уровень: '+p.level+' • XP: '+Math.floor(p.xp)+' / '+nextXP()+'<br>🪙 '+p.gold+' золотых<br>🟫 '+p.dirt.toFixed(1)+' • 🪨 '+p.stone.toFixed(1)+' / '+p.cap+'<br>🎒 '+p.bag} 
 function note(x,y,t){notes.push({x,y,t,l:1})}
 function addRes(type,n){let room=Math.max(0,p.cap-p.dirt-p.stone),g=Math.min(n,room);if(!g){toast('🎒 Мешок заполнен');return}p[type]+=g;note(p.x+Math.random()*80-40,p.y-45,'+'+g+(type==='stone'?'🪨':'🟫'));hud()}
 function spend(a,b){if(p.dirt<a||p.stone<b){toast('⚠️ Недостаточно ресурсов');return false}p.dirt-=a;p.stone-=b;hud();return true}
 function open(title,body){document.getElementById('card').innerHTML='<h2>'+title+'</h2>'+body+'<p><button onclick="closePanel()">Закрыть</button></p>';document.getElementById('panel').classList.add('show')}
 function closePanel(){document.getElementById('panel').classList.remove('show')}
 function bag(){open('🎒 Мешок','<p>Надет: <b>'+p.bag+'</b> • вместимость '+p.cap+'.</p><p>Средний — 30 • Большой — 50 • Очень большой — 80 • Гигантский — 150.</p>')}
-function mapPanel(){open('🗺️ Королевство','<p>На карте есть замок и деревня, лес, шахта с рудой, башня мага, повозка, места сражений и точки таинственных торговцев.</p><p>Сейчас главный визуальный фокус Beta 10 — единый живой мир.</p>')}
+function mapPanel(){open('🗺️ Королевство','<p>На карте есть замок и деревня, лес, шахта с рудой, башня мага, повозка, места сражений и точки таинственных торговцев.</p><p>Beta 15 — жители, квесты, доверие, золото и опасные мобы.</p>')}
 function pauseGame(){paused=!paused;toast(paused?'Ⅱ Пауза':'▶ Продолжить')}
 function combatFx(type,labelText){
  attackKind=type; attack=0.72;
@@ -107,39 +175,36 @@ function combatFx(type,labelText){
  lb.textContent=labelText;lb.classList.add('show');fl.style.opacity='.85';
  clearTimeout(combatFx.timer);combatFx.timer=setTimeout(()=>{lb.classList.remove('show');fl.style.opacity='0'},180);
 }
-function sword(){combatFx('sword','⚔️ УДАР!');toast('⚔️ Меч — мощный замах')}
+function sword(){combatFx('sword','⚔️ УДАР!');setTimeout(playerAttackHit,180);toast('⚔️ Меч — мощный замах')}
 
 function rock(){
- if(spend(1,1)){combatFx('rock','🪨 БРОСОК!');toast('🪨 Камень полетел')}
+ if(spend(1,1)){combatFx('rock','🪨 БРОСОК!');setTimeout(playerRockHit,300);toast('🪨 Магический камень полетел дальше')}
 }
 function flight(){if(p.fly){p.fly=false;toast('🌀 Полёт выключен');return}if(p.dirt<.5||p.stone<.5){toast('⚠️ Нужно 0.5🟫 и 0.5🪨');return}p.fly=true;toast('🌀 Полёт включён')}
 function mineResource(){let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<85);if(!o){toast('⛏️ Подойди к руде');return}p.dir=Math.atan2(o.y-p.y,o.x-p.x);pickA=.75;o.h--;toast('⛏️ Удар киркой');note(o.x,o.y-45,'Осталось ударов: '+o.h);if(o.h<=0){let r=Math.random(),n=r<.65?1:r<.9?2:3;note(o.x,o.y-70,n===1?'Маленький кусок':n===2?'Средний кусок':'Большой кусок');addRes(o.type,n);o.h=o.max}}
 function interact(){
-  // Beta 15.5.5: when Alexander is in the village center, choose the nearest visible resident.
-  if(p.x>2600 && p.x<4800 && p.y>700 && p.y<1250){
-    let nearest=Math.floor((Math.abs(p.x-3600)/260))%villagers.length;
-    let v=villagers[Math.max(0,Math.min(villagers.length-1,nearest))];
-    open('💬 '+v.name,'<p><b>'+v.role+'</b></p><p>Привет! Я житель королевства.</p><p>Александр может поговорить со мной и узнать больше о деревне.</p>');
-    return;
-  }
-
- let d=Math.hypot(p.x-target.x,p.y-target.y);
- if(d<170){open('👑 Королевский зал','<p>Просторная высокая постройка из мрамора с золотой крышей и большими окнами. Снаружи — цветы и кусты.</p><p>Внутри красный ковёр ведёт к ступеням и королевскому креслу: красная кожа, золотые края, высокая спинка и подлокотники.</p><p>Рядом стоят гвардейцы с копьями, а на кресле сидит король.</p>');return}
- let tr=traders.find(t=>Math.hypot(p.x-t.x,p.y-t.y)<120);
- if(tr){open('🛒 Таинственный торговец',`<p>Торговец резко раскрывает тёмное платье — внутри спрятаны товары.</p><button onclick="buy(500,30,'Средний')">Средний — 500 XP</button><button onclick="buy(777,50,'Большой')">Большой — 777 XP</button><br><button onclick="buy(1000,80,'Очень большой')">Очень большой — 1000 XP</button><button onclick="buy(1500,150,'Гигантский')">Гигантский — 1500 XP</button>`);return}
- 
-  let nearVillager=villagers.find(v=>Math.hypot(p.x-v.x,p.y-v.y)<85);
-  if(nearVillager){
-    let isTraitor=traitorIds.has(nearVillager.id);
-    open('💬 '+nearVillager.name,
-      '<p><b>'+nearVillager.role+'</b></p>'+
-      '<p>'+ (isTraitor ? 'Житель дружелюбно разговаривает с Александром. Он кажется надёжным.' : 'Житель занят своими делами и приветствует Александра.') +'</p>'+
-      '<p>Сейчас он выглядит совершенно обычным жителем деревни.</p>');
-    return;
-  }
-let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mineResource();return}
+ let nearVillager=villagers.find(v=>dist(p,v)<95);
+ if(nearVillager){
+   let v=nearVillager;
+   let questHtml=v.quest
+    ? '<p>📜 <b>Задание:</b> '+v.quest.text+'</p><p>Прогресс: '+v.quest.done+' / '+v.quest.target+'<br>🪙 Награда: '+v.quest.reward+'</p>'
+    : '<p>📜 <b>Квест:</b> '+(v.id===1?'Защити мой урожай от волков.':'Помоги жителю королевства.')+'</p><button onclick="setQuest(villagers.find(x=>x.id==='+v.id+'))">Принять квест</button>';
+   if(v.quest&&v.quest.done>=v.quest.target) questHtml+='<button onclick="completeQuest(villagers.find(x=>x.id==='+v.id+'))">Получить награду</button>';
+   open('💬 '+v.name,'<p><b>'+v.role+'</b></p><p>❤️ Доверие: '+v.trust+' / 100</p>'+questHtml);
+   return;
+ }
+ if(dist(p,mysterious)<110){
+   if(!mysterious.met){
+     mysterious.met=true;
+     open('🧙 Таинственный человек','<p>«Человек, который слишком долго идёт по одной дороге.»</p><p>— Ты знаешь дорогу к замку?</p><p>«Знаю. Но тебе нужно найти её самому.»</p><p>Он смотрит на повозку.</p><p>«Не всё, что растёт из земли, является травой.»</p>');
+   } else open('🧙 Таинственный человек','<p>«Если ты продолжишь идти — обязательно.»</p><p>💧 Его присутствие кажется необычным. Вода вокруг повозки едва заметно движется.</p>');
+   return;
+ }
+ let d=dist(p,target);
+ if(d<170){open('👑 Королевский зал','<p>Просторная высокая постройка из мрамора с золотой крышей и большими окнами.</p><p>Главная цель Александра — добраться до королевского замка.</p>');return}
+ let o=ores.find(o=>dist(p,o)<90);if(o){mineResource();return}
 }
-function buy(cost,cap,name){if(p.xp<cost){toast('❌ Опыта недостаточно');return}p.xp-=cost;p.cap=cap;p.bag=name;hud();toast('🎒 Куплен '+name);closePanel()}
+function buy(cost,cap,name){toast('🎒 В Beta 15 мешки покупаются за золото');}
 
 function setup(){
  ores=[
@@ -147,7 +212,7 @@ function setup(){
   [870,405,'stone'],[980,520,'dirt']
  ].map(a=>({x:a[0],y:a[1],type:a[2],h:4,max:4}));
  traders=[{x:1520,y:1410},{x:2280,y:520},{x:2720,y:1480}];
- for(let i=0;i<8;i++)butterflies.push({x:1280+(i*233)%1700,y:250+(i*317)%1750,a:i*.8,s:.6+Math.random()*.5});
+ 
 }setup();
 
 function move(dt){
@@ -240,27 +305,35 @@ function player(){
   }
 }
 
-// Beta 15.5.5 — NPC Fix: visible village residents
+// Beta 14 — NPC Fix: visible village residents
 const npcSpots=[
   [-170,-95],[-85,-125],[0,-105],[85,-125],[170,-95],
   [-190,20],[-95,35],[0,25],[95,35],[190,20]
 ];
 function drawVillagers(){
-  npcSpots.forEach((s,i)=>{
-    const sx=canvas.width/2+s[0], sy=canvas.height/2+s[1];
-    const v=villagers[i];
-    const bob=Math.sin(performance.now()/700+i)*3;
-    // shadow
-    ctx.globalAlpha=.25;ctx.beginPath();ctx.ellipse(sx,sy+28,18,7,0,0,Math.PI*2);ctx.fillStyle='#000';ctx.fill();ctx.globalAlpha=1;
-    // body and head
-    ctx.fillStyle=v.color;ctx.fillRect(sx-13,sy+2+bob,26,32);
-    ctx.fillStyle='#b97850';ctx.beginPath();ctx.arc(sx,sy-10+bob,13,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#68402b';ctx.beginPath();ctx.arc(sx,sy-17+bob,13,Math.PI,Math.PI*2);ctx.fill();
-    // name + role
-    ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
-    ctx.fillText(v.name,sx,sy-30+bob);
-    ctx.fillStyle='#ddd';ctx.font='10px sans-serif';ctx.fillText(v.role,sx,sy+48+bob);
-  });
+ villagers.forEach((v)=>{
+   const bob=Math.sin(performance.now()/700+v.id)*2;
+   ctx.globalAlpha=.25;ctx.beginPath();ctx.ellipse(v.x,v.y+28,18,7,0,0,Math.PI*2);ctx.fillStyle='#000';ctx.fill();ctx.globalAlpha=1;
+   ctx.fillStyle=v.color;ctx.fillRect(v.x-13,v.y+2+bob,26,32);
+   ctx.fillStyle='#b97850';ctx.beginPath();ctx.arc(v.x,v.y-10+bob,13,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#68402b';ctx.beginPath();ctx.arc(v.x,v.y-17+bob,13,Math.PI,Math.PI*2);ctx.fill();
+   label(v.x,v.y-30+bob,v.name,12);label(v.x,v.y+48+bob,v.role,10);
+   if(dist(p,v)<120){ctx.strokeStyle='#e9d76b88';ctx.lineWidth=2;ctx.beginPath();ctx.arc(v.x,v.y,34,0,Math.PI*2);ctx.stroke()}
+ });
+}
+function drawMysterious(){circ(mysterious.x,mysterious.y,24,'#b97850','#151b18');circ(mysterious.x,mysterious.y-26,15,'#101b24');poly([[mysterious.x-27,mysterious.y+4],[mysterious.x,mysterious.y-62],[mysterious.x+27,mysterious.y+4],[mysterious.x+20,mysterious.y+42],[mysterious.x-20,mysterious.y+42]],'#162b38','#77c9e8');label(mysterious.x,mysterious.y+65,'ТАИНСТВЕННЫЙ',10)}
+function drawMobs(){
+ mobs.forEach(m=>{
+   const d=mobDefs[m.type],r=m.type==='stone'?42:m.type==='bigboar'||m.type==='bear'?31:m.type==='alpha'?25:20;
+   let body=m.type==='stone'?'#737b79':m.type==='bear'?'#70513b':m.type==='bigboar'||m.type==='boar'?'#8b5b3c':m.type==='alpha'?'#4e4b58':'#666b70';
+   circ(m.x,m.y,r,body,'#252a27');
+   if(m.type==='wolf'||m.type==='alpha'){circ(m.x-9,m.y-12,6,'#aaa');circ(m.x+9,m.y-12,6,'#aaa')}
+   if(m.type==='stone'){poly([[m.x-25,m.y-20],[m.x-10,m.y-48],[m.x+12,m.y-30],[m.x+28,m.y-5],[m.x+5,m.y+25],[m.x-25,m.y+18]],body,'#3c413f')}
+   // hp bar
+   let bw=r*2.4;ctx.fillStyle='#160d0d';ctx.fillRect(m.x-bw/2,m.y-r-17,bw,6);ctx.fillStyle='#70c96b';ctx.fillRect(m.x-bw/2,m.y-r-17,bw*Math.max(0,m.hp/m.maxHp),6);
+   label(m.x,m.y+r+16,d.name,9);
+   if(m.warn>0){ctx.save();ctx.globalAlpha=.32;ctx.strokeStyle='#ff4545';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.lineTo(m.x+Math.cos(m.attackAngle)*m.range*2.2,m.y+Math.sin(m.attackAngle)*m.range*2.2);ctx.stroke();ctx.restore()}
+ });
 }
 function draw(){
  ctx.clearRect(0,0,W,H);let C=cam();ctx.save();ctx.translate(-C.x,-C.y);
@@ -280,20 +353,65 @@ function draw(){
  castle();renderMine();tower();wagon();
  circ(1850,980,130,'#1b332955','#9bb59c');label(1850,835,'МЕСТО БИТВЫ',14);
  circ(2050,1120,115,'#18373b55','#83c0c8');label(2050,980,'ТАИНСТВЕННЫЙ',14);
- ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);drawVillagers();
+ ores.forEach(ore);traders.forEach(trader);drawMysterious();drawVillagers();drawMobs();
 player();
  ctx.restore();
  ctx.save();ctx.translate(-C.x,-C.y);notes.forEach(n=>{ctx.globalAlpha=n.l;label(n.x,n.y,n.t,14)});ctx.restore();
 }
+
+function updateQuestUI(){document.getElementById('quest').textContent=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:'👑 Цель: королевский замок'}
+function mobAI(dt){
+  mobs.slice().forEach(m=>{
+    const d=mobDefs[m.type],dx=p.x-m.x,dy=p.y-m.y,dd=Math.hypot(dx,dy);
+    m.cd=Math.max(0,m.cd-dt);m.warn=Math.max(0,m.warn-dt);
+    if(m.attackT>0){
+      m.attackT-=dt;
+      if(m.attackT<=0){
+        let hit=false;
+        if(m.type==='boar'||m.type==='bigboar'){hit=dd<150 && Math.abs(Math.atan2(Math.sin(m.attackAngle-p.dir),Math.cos(m.attackAngle-p.dir)))<1.2}
+        else hit=dd<d.range*1.35 && Math.abs(Math.atan2(Math.sin(m.attackAngle-Math.atan2(dy,dx)),Math.cos(m.attackAngle-Math.atan2(dy,dx))))<.75;
+        if(hit){p.hp=Math.max(0,p.hp-m.damage);toast('💥 '+d.name+' нанёс '+m.damage+' урона');}
+        m.state='idle';
+      }
+      return;
+    }
+    if(dd<430){
+      if(m.cd<=0){
+        m.attackAngle=Math.atan2(dy,dx);
+        m.warn=d.windup;
+        m.attackT=d.windup;
+        m.cd=d.cooldown;
+        // boar charge, other mobs use warning direction
+        if(m.type==='boar'||m.type==='bigboar')m.attackAngle=Math.atan2(dy,dx);
+      } else {
+        // movement rules
+        let ang=Math.atan2(dy,dx);
+        if(m.type==='wolf'){
+          if(dd>d.range) {m.x+=Math.cos(ang)*m.speed*dt;m.y+=Math.sin(ang)*m.speed*dt}
+          else {let side=Math.sin(time*3+m.x)*.6;m.x+=Math.cos(ang+side)*35*dt;m.y+=Math.sin(ang+side)*35*dt}
+        } else if(m.type==='alpha'){
+          if(dd>d.range+15){m.x+=Math.cos(ang)*m.speed*dt;m.y+=Math.sin(ang)*m.speed*dt}
+        } else if(m.type==='stone'){
+          if(dd>m.range*1.5){m.x+=Math.cos(ang)*m.speed*dt;m.y+=Math.sin(ang)*m.speed*dt}
+        } else {
+          if(dd>d.range*.8){m.x+=Math.cos(ang)*m.speed*dt;m.y+=Math.sin(ang)*m.speed*dt}
+        }
+        m.x=Math.max(40,Math.min(world.w-40,m.x));m.y=Math.max(40,Math.min(world.h-40,m.y));
+      }
+    }
+  });
+  if(p.hp<=0){p.hp=p.maxHp;toast('❤️ Александр потерял сознание и восстановился');p.x=540;p.y=1010}
+}
 function update(dt){
  if(paused)return;
- time+=dt;move(dt);attack=Math.max(0,attack-dt);pickA=Math.max(0,pickA-dt);
+ time+=dt;move(dt);mobAI(dt);spawnTimer+=dt;if(spawnTimer>=30){spawnTimer=0;if(Math.random()<.4)randomMobSpawn();}attack=Math.max(0,attack-dt);pickA=Math.max(0,pickA-dt);
  if(combat.t>0 || combat.duration>0){
    combat.t+=dt;
    combat.phase=Math.min(1,combat.t/combat.duration);
    if(combat.t>=combat.duration){combat.duration=0;combat.t=0}
  }
  notes.forEach(n=>{n.l-=dt;n.y-=18*dt});notes=notes.filter(n=>n.l>0);hud();
+ let qText=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:'👑 Цель: королевский замок';document.getElementById('quest').textContent=qText;
  let C=cam(),sx=target.x-C.x,sy=target.y-C.y,ang=Math.atan2(sy-H/2,sx-W/2),ar=document.getElementById('arrow');
  if(Math.hypot(sx-W/2,sy-H/2)<180)ar.style.display='none';
  else{ar.style.display='block';ar.style.left=(W/2+Math.cos(ang)*Math.min(W,H)*.37)+'px';ar.style.top=(H/2+Math.sin(ang)*Math.min(W,H)*.37)+'px';ar.style.transform='translate(-50%,-50%) rotate('+ang+'rad)'}
@@ -307,144 +425,166 @@ j.addEventListener('touchstart',e=>{tid=e.changedTouches[0].identifier;let q=e.c
 j.addEventListener('touchmove',e=>{for(let q of e.changedTouches)if(q.identifier===tid)setJoy(q.clientX,q.clientY)},{passive:true});
 j.addEventListener('touchend',()=>{tid=null;joy.x=joy.y=0;document.getElementById('knob').style.transform='translate(0,0)'},{passive:true});
 hud();
+// iPhone: prevent page/canvas pinch zoom from changing the game view.
+document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 </script>
 
-<style>
-#combatFlash{position:fixed;inset:0;z-index:55;pointer-events:none;opacity:0;background:radial-gradient(circle,rgba(255,255,255,.34),rgba(255,60,40,0) 55%);transition:opacity .08s}
-#combatLabel{position:fixed;z-index:56;left:50%;top:38%;transform:translate(-50%,-50%) scale(.7);font-size:28px;font-weight:1000;text-shadow:0 3px 10px #000;opacity:0;pointer-events:none;transition:.16s}
-#combatLabel.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-</style>
-<div id="combatFlash"></div><div id="combatLabel"></div>
 <script>
-/*
- ALEXANDER RPG — BETA 15.5 COMBAT UPDATE
- This layer provides the combat primitives used by the upgraded combat systems:
- - timed attack phases
- - visible player weapon/tool animation
- - projectile travel from Alexander's hand
- - red telegraphs before enemy attacks
- - distance-aware enemy attack selection
- - Alpha Wolf / pack command state
- - Stone Monster self-piece projectile + regeneration state
-*/
-window.AlexCombat15_5 = (() => {
-  const S={player:null,mobs:[],projectiles:[],fx:[],telegraphs:[],cooldowns:{},
-           constants:{
-             wolfDodge:.35,
-             wolfAttackDelay:.7,wolfCooldown:1,
-             boarChargeSpeed:520,boarChargeTime:.48,
-             bigBoarChargeSpeed:460,bigBoarRearDamage:34,
-             stoneThrowRange:520,stoneRegenDelay:3,
-             telegraphTime:.7
-           }};
-  const $=id=>document.getElementById(id);
-  function flash(text){
-    const f=$('combatFlash'),l=$('combatLabel');
-    if(f){f.style.opacity=.75;setTimeout(()=>f.style.opacity=0,90)}
-    if(l){l.textContent=text;l.classList.add('show');setTimeout(()=>l.classList.remove('show'),240)}
-  }
-  function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-  function angle(a,b){return Math.atan2(b.y-a.y,b.x-a.x)}
-  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
-  function telegraph(owner,shape,opts={}){
-    const t={owner,shape,ttl:opts.duration||S.constants.telegraphTime,
-      x:opts.x??owner.x,y:opts.y??owner.y,
-      x2:opts.x2??owner.x,y2:opts.y2??owner.y,
-      width:opts.width||60,radius:opts.radius||100,angle:opts.angle||0};
-    S.telegraphs.push(t); return t;
-  }
-  function projectile(from,to,opts={}){
-    const sx=from.x,sy=from.y,tx=to.x,ty=to.y;
-    S.projectiles.push({x:sx,y:sy,tx,ty,t:0,duration:opts.duration||.38,
-      damage:opts.damage||0,radius:opts.radius||10,label:opts.label||'🪨',
-      onHit:opts.onHit||null});
-  }
-  function playerSword(){
-    const p=S.player;if(!p)return;
-    p.combat={kind:'sword',phase:0,t:0,duration:.42};
-    flash('⚔️');
-  }
-  function playerPick(){
-    const p=S.player;if(!p)return;
-    p.combat={kind:'pickaxe',phase:0,t:0,duration:.58};
-    flash('⛏️');
-  }
-  function playerRock(target){
-    const p=S.player;if(!p||!target)return;
-    p.combat={kind:'rock',phase:0,t:0,duration:.55};
-    setTimeout(()=>{
-      const hand={x:p.x+Math.cos(p.dir||0)*22,y:p.y+Math.sin(p.dir||0)*22-12};
-      projectile(hand,target,{duration:.42,damage:18,label:'🪨'});
-    },240);
-    flash('🪨');
-  }
-  function chooseMeleeOrLeap(m,d){
-    if(d>90)return 'leap';
-    return Math.random()<.75?'claw':'leap';
-  }
-  function wolfThink(m,p){
-    const d=dist(m,p);
-    if(d>75)return 'chase';
-    return chooseMeleeOrLeap(m,d);
-  }
-  function alphaCommand(alpha,pack,p){
-    const d=dist(alpha,p);
-    if(d<420){
-      for(const w of pack) w.packCommand={type:'surround',until:performance.now()+3200};
-      return 'surround';
+/* =========================
+   BETA 16 — SETTINGS / MULTI-TOUCH
+   ========================= */
+const B16_KEY='alexander_rpg_beta16_controls';
+const B16_DEFAULT={
+  movement:'joystick',
+  zoneSize:190,
+  cameraSensitivity:1,
+  maxTouches:2,
+  buttonScale:1,
+  buttonOpacity:.88,
+  edit:false,
+  positions:{}
+};
+let B16={...B16_DEFAULT,...JSON.parse(localStorage.getItem(B16_KEY)||'{}')};
+B16.positions={...B16_DEFAULT.positions,...(B16.positions||{})};
+let b16Active=new Map(),b16Look={id:null,lastX:0,lastY:0,x:0,y:0};
+let b16LookX=0,b16LookY=0;
+
+function b16Save(){localStorage.setItem(B16_KEY,JSON.stringify(B16))}
+function b16Apply(){
+  document.getElementById('joy').style.display=B16.movement==='joystick'?'block':'none';
+  const z=document.getElementById('moveZone');
+  z.style.display=B16.movement==='zone'?'block':'none';
+  z.style.width=B16.zoneSize+'px'; z.style.height=Math.round(B16.zoneSize*.79)+'px';
+  document.querySelectorAll('#buttons button').forEach((b,i)=>{
+    b.style.transform='scale('+B16.buttonScale+')';
+    b.style.opacity=B16.buttonOpacity;
+    const p=B16.positions[b.id||('b'+i)];
+    if(p && B16.edit){b.style.position='fixed';b.style.left=p.x+'px';b.style.top=p.y+'px';b.style.right='auto';b.style.bottom='auto'}
+    else if(!B16.edit){b.style.position='';b.style.left='';b.style.top='';b.style.right='';b.style.bottom=''}
+  });
+  document.getElementById('moveZone').style.transform='none';
+}
+function b16MaxTouch(){return Math.max(1,Math.min(5,Number(B16.maxTouches)||2))}
+function openSettings(){
+  const h=`
+  <h2>⚙️ Настройки управления — Beta 16</h2>
+  <p><b>Количество пальцев:</b>
+  <select id="b16Touches">${[1,2,3,4,5].map(n=>`<option value="${n}" ${B16.maxTouches==n?'selected':''}>${n}</option>`).join('')}</select></p>
+  <p><b>Движение:</b>
+  <button onclick="b16SetMove('joystick')">🕹️ Джойстик</button>
+  <button onclick="b16SetMove('zone')">👆 Свободная зона</button></p>
+  <p><b>Размер зоны движения:</b> <input id="b16Zone" type="range" min="120" max="360" value="${B16.zoneSize}"> <span id="b16ZoneVal">${B16.zoneSize}px</span></p>
+  <p><b>Чувствительность камеры:</b> <input id="b16Sens" type="range" min=".4" max="2.5" step=".1" value="${B16.cameraSensitivity}"> <span id="b16SensVal">${B16.cameraSensitivity.toFixed(1)}</span></p>
+  <p><b>Размер кнопок:</b> <input id="b16Scale" type="range" min=".7" max="1.5" step=".05" value="${B16.buttonScale}"> <span id="b16ScaleVal">${B16.buttonScale.toFixed(2)}×</span></p>
+  <p><b>Прозрачность:</b> <input id="b16Opacity" type="range" min=".35" max="1" step=".05" value="${B16.buttonOpacity}"> <span id="b16OpacityVal">${Math.round(B16.buttonOpacity*100)}%</span></p>
+  <p><button onclick="b16EditButtons()">🛠️ Переместить кнопки</button>
+  <button onclick="b16Reset()">🔄 Сбросить</button></p>
+  <p><button onclick="b16SaveAndClose()">💾 Сохранить</button></p>`;
+  open('⚙️ Настройки',h);
+  setTimeout(()=>{
+    const t=document.getElementById('b16Touches'),z=document.getElementById('b16Zone'),s=document.getElementById('b16Sens'),sc=document.getElementById('b16Scale'),o=document.getElementById('b16Opacity');
+    if(!t)return;
+    t.onchange=()=>{B16.maxTouches=+t.value;b16Save()};
+    z.oninput=()=>{B16.zoneSize=+z.value;document.getElementById('b16ZoneVal').textContent=z.value+'px';b16Apply()};
+    s.oninput=()=>{B16.cameraSensitivity=+s.value;document.getElementById('b16SensVal').textContent=s.value;b16Save()};
+    sc.oninput=()=>{B16.buttonScale=+sc.value;document.getElementById('b16ScaleVal').textContent=sc.value+'×';b16Apply()};
+    o.oninput=()=>{B16.buttonOpacity=+o.value;document.getElementById('b16OpacityVal').textContent=Math.round(B16.buttonOpacity*100)+'%';b16Apply()};
+  },0);
+}
+function b16SetMove(v){B16.movement=v;b16Apply();b16Save();toast(v==='zone'?'👆 Свободная зона включена':'🕹️ Джойстик включён')}
+function b16Reset(){B16={...B16_DEFAULT,positions:{}};b16Save();b16Apply();openSettings()}
+function b16SaveAndClose(){B16.edit=false;b16Save();b16Apply();closePanel();toast('💾 Управление сохранено')}
+function b16EditButtons(){
+  B16.edit=true;b16Apply();
+  document.getElementById('editHint').style.display='block';
+  closePanel();
+  toast('🛠️ Теперь перетаскивайте кнопки');
+  setTimeout(()=>document.getElementById('editHint').style.display='none',6000);
+}
+function b16ButtonId(b,i){return b.id||'b'+i}
+
+/* Draggable action buttons while editor is active. */
+document.querySelectorAll('#buttons button').forEach((b,i)=>{
+  b.id=b16ButtonId(b,i);
+  b.addEventListener('touchstart',e=>{
+    if(!B16.edit)return;
+    e.preventDefault();e.stopPropagation();
+    const q=e.changedTouches[0];b16Active.set(q.identifier,{b,dx:q.clientX-b.getBoundingClientRect().left,dy:q.clientY-b.getBoundingClientRect().top});
+  },{passive:false});
+  b.addEventListener('touchmove',e=>{
+    if(!B16.edit)return;
+    for(const q of e.changedTouches){
+      const a=b16Active.get(q.identifier); if(!a)continue;
+      e.preventDefault();
+      const x=Math.max(4,Math.min(innerWidth-b.offsetWidth-4,q.clientX-a.dx));
+      const y=Math.max(4,Math.min(innerHeight-b.offsetHeight-4,q.clientY-a.dy));
+      b.style.position='fixed';b.style.left=x+'px';b.style.top=y+'px';b.style.right='auto';b.style.bottom='auto';
+      B16.positions[b.id]={x,y};
     }
-    return 'normal';
-  }
-  function stoneThrow(m,p){
-    const d=dist(m,p);
-    if(d<=S.constants.stoneThrowRange){
-      telegraph(m,'line',{x2:p.x,y2:p.y,width:55});
-      setTimeout(()=>{
-        const piece={x:m.x,y:m.y};
-        projectile(piece,p,{duration:.55,damage:30,label:'🪨',onHit:()=>{}});
-      },S.constants.telegraphTime*1000);
-      return true;
-    }
-    return false;
-  }
-  function stoneRegenerate(m){
-    if(m.regenPending)return;
-    m.regenPending=true;
-    setTimeout(()=>{
-      if(m.dead)return;
-      m.hp=Math.min(m.maxHp,m.hp+(m.regenAmount||25));
-      m.regenPending=false;
-    },S.constants.stoneRegenDelay*1000);
-  }
-  function update(dt){
-    for(const t of S.telegraphs)t.ttl-=dt;
-    S.telegraphs=S.telegraphs.filter(t=>t.ttl>0);
-    for(const q of S.projectiles){
-      q.t+=dt/q.duration;
-      const k=clamp(q.t,0,1),h=4*Math.sin(Math.PI*k);
-      q.x=q.x+(q.tx-q.x)*0; // retained for stable object identity
-      q.renderX=q._sx+(q.tx-q._sx)*k;
-      q.renderY=q._sy+(q.ty-q._sy)*k-h*22;
-    }
-    S.projectiles=S.projectiles.filter(q=>q.t<1);
-    for(const f of S.fx)f.t-=dt;
-    S.fx=S.fx.filter(f=>f.t>0);
-    if(S.player?.combat){
-      S.player.combat.t+=dt;
-      S.player.combat.phase=clamp(S.player.combat.t/S.player.combat.duration,0,1);
-      if(S.player.combat.phase>=1)S.player.combat=null;
+  },{passive:false});
+  b.addEventListener('touchend',e=>{for(const q of e.changedTouches)b16Active.delete(q.identifier)},{passive:true});
+});
+
+/* Second-finger camera look. First finger remains on movement. */
+const oldCam=cam;
+cam=function(){
+  const c0=oldCam();
+  return {x:Math.max(0,Math.min(world.w-W,c0.x+b16LookX)),
+          y:Math.max(0,Math.min(world.h-H,c0.y+b16LookY))};
+};
+c.addEventListener('touchstart',e=>{
+  if(b16Active.size>=b16MaxTouch())return;
+  for(const q of e.changedTouches){
+    if(b16Active.size>=b16MaxTouch())break;
+    if(q.clientX>innerWidth*.42 && b16Look.id===null){
+      b16Look={id:q.identifier,lastX:q.clientX,lastY:q.clientY,x:0,y:0};
+      b16Active.set(q.identifier,{look:true});
     }
   }
-  function bindPlayer(p){S.player=p}
-  function bindMobs(m){S.mobs=m}
-  function prepareProjectiles(){
-    for(const q of S.projectiles){
-      if(q._sx===undefined){q._sx=q.x;q._sy=q.y}
-    }
+},{passive:true});
+c.addEventListener('touchmove',e=>{
+  if(b16Look.id===null)return;
+  for(const q of e.changedTouches)if(q.identifier===b16Look.id){
+    const dx=q.clientX-b16Look.lastX,dy=q.clientY-b16Look.lastY;
+    b16Look.lastX=q.clientX;b16Look.lastY=q.clientY;
+    b16LookX-=dx*B16.cameraSensitivity;
+    b16LookY-=dy*B16.cameraSensitivity;
+    b16LookX=Math.max(-Math.max(180,W*.28),Math.min(Math.max(180,W*.28),b16LookX));
+    b16LookY=Math.max(-Math.max(130,H*.22),Math.min(Math.max(130,H*.22),b16LookY));
   }
-  return {S,update,bindPlayer,bindMobs,telegraph,projectile,playerSword,playerPick,playerRock,
-          wolfThink,alphaCommand,stoneThrow,stoneRegenerate,prepareProjectiles};
-})();
+},{passive:true});
+c.addEventListener('touchend',e=>{
+  for(const q of e.changedTouches)if(q.identifier===b16Look.id){b16Active.delete(q.identifier);b16Look.id=null}
+},{passive:true});
+
+/* Free movement zone: dynamic touch origin, like Roblox-style thumb movement. */
+const mz=document.getElementById('moveZone'); let b16MoveId=null,b16MoveOrigin=null;
+function b16ZoneSet(x,y){
+  const r=mz.getBoundingClientRect(),cx=b16MoveOrigin.x,cy=b16MoveOrigin.y;
+  let dx=x-cx,dy=y-cy,m=Math.min(r.width,r.height)*.42,l=Math.hypot(dx,dy);
+  if(l>m){dx=dx/l*m;dy=dy/l*m}
+  joy.x=dx/m;joy.y=dy/m;
+}
+mz.addEventListener('touchstart',e=>{
+  if(b16MoveId!==null)return;
+  const q=e.changedTouches[0];b16MoveId=q.identifier;b16MoveOrigin={x:q.clientX,y:q.clientY};b16ZoneSet(q.clientX,q.clientY);e.preventDefault();
+},{passive:false});
+mz.addEventListener('touchmove',e=>{
+  for(const q of e.changedTouches)if(q.identifier===b16MoveId){b16ZoneSet(q.clientX,q.clientY);e.preventDefault()}
+},{passive:false});
+mz.addEventListener('touchend',e=>{
+  for(const q of e.changedTouches)if(q.identifier===b16MoveId){b16MoveId=null;b16MoveOrigin=null;joy.x=joy.y=0}
+},{passive:true});
+
+/* Clamp accepted touches globally to the selected limit without blocking page rendering. */
+document.addEventListener('touchstart',e=>{
+  if(e.touches.length>b16MaxTouch())e.preventDefault();
+},{passive:false});
+
+b16Apply();
 </script>
 
 </body>
