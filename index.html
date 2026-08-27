@@ -749,17 +749,19 @@ function b17StoneHand(){
   b17Toast('✋ Каменная рука активна — управляйте зоной руки');
   if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)m._b17SlowUntil=Date.now()+300000;
 }
+const B17_HAND_HITBOX_RADIUS = 92;
 function b17HandNearest(){
-  // More forgiving contact-based grab: account for the mob's visual size
-  // instead of requiring the hand to reach the exact center point.
+  // Explicit hand hitbox: the marked circle around the palm is the grab zone.
   let best=null,bestScore=Infinity;
   if(window.mobs)for(const m of window.mobs){
     if(!m||m.dead||m._b17Held)continue;
     const dx=(m.x||0)-b17HandX, dy=(m.y||0)-b17HandY;
     const d=Math.hypot(dx,dy);
-    const radius=Math.max(70, Number(m.r||m.radius||m.size||m.hitRadius||45)+55);
-    if(d<=radius){
-      const score=d/Math.max(1,radius);
+    const mobRadius=Math.max(24, Number(m.r||m.radius||m.size||m.hitRadius||38));
+    // Two circles touching = valid grab.
+    const allowed=B17_HAND_HITBOX_RADIUS+mobRadius;
+    if(d<=allowed){
+      const score=d/Math.max(1,allowed);
       if(score<bestScore){bestScore=score;best=m}
     }
   }
@@ -909,6 +911,22 @@ b17AnimDraw=function(){
     ctx.strokeStyle='#737a76';ctx.lineWidth=9;
     ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+Math.cos(a)*30,ty+Math.sin(a)*30);ctx.stroke();
   }
+
+  // DEBUG: visible grab hitbox. The circle follows the palm exactly.
+  ctx.beginPath();
+  ctx.arc(tx,ty,B17_HAND_HITBOX_RADIUS,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,215,0,0.12)';
+  ctx.fill();
+  ctx.strokeStyle='#ffd700';
+  ctx.lineWidth=3;
+  ctx.setLineDash([10,7]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#ffd700';
+  ctx.font='bold 13px sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('ЗАХВАТ',tx,ty-B17_HAND_HITBOX_RADIUS-8);
+
   ctx.restore();
   if(b17HandTarget&&!b17HandTarget.dead){
     b17HandTarget.x=b17HandX;b17HandTarget.y=b17HandY-28;
