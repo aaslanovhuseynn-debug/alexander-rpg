@@ -52,6 +52,11 @@ background:#07100df2;border:1px solid #c8d3c2aa;border-radius:12px;display:none;
 #b17HandControls button{font-size:18px;padding:12px 16px;border-radius:14px;border:1px solid #ffffff55;background:#07100ddd;color:#fff}
 #b17HandStick{width:140px;height:110px;border:2px dashed #c8d3c255;border-radius:22px;background:#ffffff08;touch-action:none}
 </style>
+
+<style id="b171-hand-grab-fix">
+#b17HandStick{touch-action:none;user-select:none;-webkit-user-select:none}
+#b17HandControls button{min-width:72px;min-height:44px;font-size:16px}
+</style>
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -745,11 +750,18 @@ function b17StoneHand(){
   if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)m._b17SlowUntil=Date.now()+300000;
 }
 function b17HandNearest(){
-  let best=null,bd=220;
+  // More forgiving contact-based grab: account for the mob's visual size
+  // instead of requiring the hand to reach the exact center point.
+  let best=null,bestScore=Infinity;
   if(window.mobs)for(const m of window.mobs){
-    if(!m||m.dead)continue;
-    const d=Math.hypot((m.x||0)-b17HandX,(m.y||0)-b17HandY);
-    if(d<bd){bd=d;best=m}
+    if(!m||m.dead||m._b17Held)continue;
+    const dx=(m.x||0)-b17HandX, dy=(m.y||0)-b17HandY;
+    const d=Math.hypot(dx,dy);
+    const radius=Math.max(70, Number(m.r||m.radius||m.size||m.hitRadius||45)+55);
+    if(d<=radius){
+      const score=d/Math.max(1,radius);
+      if(score<bestScore){bestScore=score;best=m}
+    }
   }
   return best;
 }
