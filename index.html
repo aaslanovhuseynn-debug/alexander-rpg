@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр RPG — Beta 16.1</title>
+<title>Александр RPG — Beta 17</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
@@ -36,13 +36,29 @@ button:active{transform:scale(.95);background:#41553f}
 .traitorHint{color:#ff7777;font-weight:900}
 </style>
 <style>html,body,#game{touch-action:none;-webkit-user-select:none;user-select:none}</style>
+
+<style>
+#b17Panel{position:fixed;z-index:70;left:50%;top:50%;transform:translate(-50%,-50%);
+width:min(92vw,460px);max-height:84vh;overflow:auto;background:#07100df5;border:1px solid #c8d3c2aa;
+border-radius:18px;padding:16px;box-shadow:0 14px 50px #000a;display:none;color:#eef4ea}
+#b17Panel h2{margin:0 0 10px;font-size:20px}
+#b17Panel .b17Ability{padding:10px;margin:7px 0;border:1px solid #ffffff22;border-radius:12px;background:#ffffff08}
+#b17Panel button{margin:4px;padding:8px 10px;border-radius:10px;border:1px solid #ffffff33;background:#ffffff12;color:inherit}
+#b17Bar{position:fixed;z-index:31;right:10px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;width:min(48vw,300px)}
+#b17Bar button{min-width:50px;min-height:50px;border-radius:14px;font-size:18px;background:#07100db8;color:#fff;border:1px solid #ffffff44}
+#b17Msg{position:fixed;z-index:90;left:50%;top:14%;transform:translateX(-50%);padding:10px 14px;
+background:#07100df2;border:1px solid #c8d3c2aa;border-radius:12px;display:none;font-weight:900;text-align:center}
+#b17HandControls{position:fixed;z-index:65;left:50%;bottom:18%;transform:translateX(-50%);display:none;gap:12px;align-items:center}
+#b17HandControls button{font-size:18px;padding:12px 16px;border-radius:14px;border:1px solid #ffffff55;background:#07100ddd;color:#fff}
+#b17HandStick{width:140px;height:110px;border:2px dashed #c8d3c255;border-radius:22px;background:#ffffff08;touch-action:none}
+</style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 16.1</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 17</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
-<button id="settingsBtn" onclick="openSettings()" aria-label="Настройки">⚙️</button>
+<button id="settingsBtn" onclick="openSettings()" aria-label="Настройки">⚙️</button><button id="b17AbilityOpen" style="position:fixed;z-index:35;right:10px;top:112px;width:48px;height:48px;padding:0;font-size:20px" onclick="b17OpenAbilities()">✨</button>
 <div id="moveZone"></div><div id="editHint">🛠️ Перетащите кнопки • Нажмите «Сохранить»</div>
 <div id="buttons">
 <button onclick="interact()">◉ Взаимодействие</button>
@@ -434,7 +450,7 @@ document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault
 
 <script>
 /* =========================
-   BETA 16.1 — BUTTON POSITION SAVE FIX
+   BETA 17 — BUTTON POSITION SAVE FIX
    BETA 16 — SETTINGS / MULTI-TOUCH
    ========================= */
 const B16_KEY='alexander_rpg_beta16_controls';
@@ -476,7 +492,7 @@ function b16Apply(){
 function b16MaxTouch(){return Math.max(1,Math.min(5,Number(B16.maxTouches)||2))}
 function openSettings(){
   const h=`
-  <h2>⚙️ Настройки управления — Beta 16</h2>
+  <h2>⚙️ Настройки управления — Beta 17</h2>
   <p><b>Количество пальцев:</b>
   <select id="b16Touches">${[1,2,3,4,5].map(n=>`<option value="${n}" ${B16.maxTouches==n?'selected':''}>${n}</option>`).join('')}</select></p>
   <p><b>Движение:</b>
@@ -593,5 +609,134 @@ document.addEventListener('touchstart',e=>{
 b16Apply();
 </script>
 
+
+<div id="b17Msg"></div>
+<div id="b17Panel">
+  <h2>✨ Способности Александра — Beta 17</h2>
+  <div id="b17Abilities"></div>
+  <button onclick="b17CloseAbilities()">Закрыть</button>
+</div>
+<div id="b17Bar"></div>
+<div id="b17HandControls">
+  <div id="b17HandStick"></div>
+  <button onclick="b17Grab()">✊ Взять</button>
+  <button onclick="b17Throw()">💨 Выбросить</button>
+</div>
+<script>
+/* =========================
+   BETA 17 — ALEXANDER ABILITIES
+   ========================= */
+const B17_KEY='alexander_rpg_beta17';
+let B17=JSON.parse(localStorage.getItem(B17_KEY)||'null')||{
+  level:0,xp:0,transformed:false,transformEnds:0,dimensionEnds:0
+};
+function b17Save(){localStorage.setItem(B17_KEY,JSON.stringify(B17))}
+function b17Toast(t){
+  const e=document.getElementById('b17Msg');e.textContent=t;e.style.display='block';
+  clearTimeout(window._b17t);window._b17t=setTimeout(()=>e.style.display='none',1700);
+}
+const B17_AB=[
+ {n:1,name:'Бросок камня',lvl:0,desc:'Александр бросает магический камень и грязь.'},
+ {n:2,name:'Полёт',lvl:0,desc:'Александр летит по воздуху, создавая под собой камень и грязь.'},
+ {n:3,name:'Вытаскивание куска земли',lvl:15,desc:'Под ближайшим врагом поднимается кусок земли.'},
+ {n:4,name:'Каменная рука',lvl:30,desc:'Каменная рука хватает и бросает врагов; вокруг замедляется время.'},
+ {n:5,name:'Каменный метеорит',lvl:50,desc:'Метеорит падает с неба и наносит урон по области.'},
+ {n:6,name:'Метеоритный дождь',lvl:70,desc:'Небольшие метеориты падают вокруг Александра и поражают область.'},
+ {n:7,name:'Трансформация',lvl:90,desc:'Броня исчезает, появляется прочная каменная кожа; Александр крупнее и медленнее. Длительность 5 минут.'},
+ {n:8,name:'Измерение',lvl:120,desc:'Создаётся каменно-земляное измерение на 3 минуты. Доступно только при активной трансформации.'}
+];
+function b17Unlocked(a){return B17.level>=a.lvl}
+function b17OpenAbilities(){
+  const box=document.getElementById('b17Abilities');
+  box.innerHTML=B17_AB.map(a=>`<div class="b17Ability"><b>${a.n}. ${a.name}</b> — уровень ${a.lvl}<br>${a.desc}<br><button ${b17Unlocked(a)?'':'disabled'} onclick="b17Use(${a.n})">${b17Unlocked(a)?'Использовать':'🔒 Заблокировано'}</button></div>`).join('');
+  document.getElementById('b17Panel').style.display='block';
+}
+function b17CloseAbilities(){document.getElementById('b17Panel').style.display='none'}
+function b17Use(n){
+  if(!b17Unlocked(B17_AB[n-1]))return b17Toast('🔒 Недостаточный уровень');
+  if(n===8 && !B17.transformed)return b17Toast('🪨 Сначала активируй Трансформацию');
+  if(n===1)b17Rock();
+  if(n===2)b17Fly();
+  if(n===3)b17EarthLift();
+  if(n===4)b17StoneHand();
+  if(n===5)b17Meteor();
+  if(n===6)b17MeteorRain();
+  if(n===7)b17Transform();
+  if(n===8)b17Dimension();
+}
+function b17NearestEnemy(){
+  if(window.mobs && Array.isArray(window.mobs)){
+    let best=null,d=1e9;
+    for(const m of window.mobs){
+      if(!m||m.dead)continue;
+      const dx=(m.x||0)-(player.x||0),dy=(m.y||0)-(player.y||0),dd=Math.hypot(dx,dy);
+      if(dd<d){d=dd;best=m}
+    }
+    return best;
+  }
+  return null;
+}
+function b17Damage(m,amount){
+  if(!m)return;
+  if(typeof m.hp==='number')m.hp-=amount;
+  if(typeof m.health==='number')m.health-=amount;
+  if(typeof m.takeDamage==='function')m.takeDamage(amount);
+  if(m.hp<=0||m.health<=0)m.dead=true;
+}
+function b17Rock(){
+  const m=b17NearestEnemy(); if(m)b17Damage(m,28);
+  b17Toast('🪨 Камень и грязь летят вперёд!');
+}
+function b17Fly(){window.b17Flying=!window.b17Flying;b17Toast(window.b17Flying?'🪽 Полёт включён':'🪽 Полёт выключен')}
+function b17EarthLift(){const m=b17NearestEnemy();if(m){m.y=(m.y||0)-45;b17Damage(m,40)}b17Toast('🌍 Земля поднялась под врагом')}
+let b17HandTarget=null,b17HandX=0,b17HandY=0;
+function b17StoneHand(){
+  window.b17HandActive=true;
+  document.getElementById('b17HandControls').style.display='flex';
+  b17Toast('✋ Каменная рука: время замедлено');
+  if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)m._b17SlowUntil=Date.now()+5000;
+}
+function b17Grab(){b17HandTarget=b17NearestEnemy();b17Toast(b17HandTarget?'✊ Враг схвачен':'✊ Рядом нет врага')}
+function b17Throw(){
+  if(!b17HandTarget)return b17Toast('Нет схваченного врага');
+  b17Damage(b17HandTarget,999999);
+  b17HandTarget.dead=true;b17HandTarget=null;b17Toast('💨 Враг отброшен далеко!');
+}
+function b17Meteor(){const m=b17NearestEnemy();if(m){b17Damage(m,90);if(window.mobs)for(const q of window.mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-(m.x||0),(q.y||0)-(m.y||0))<90)b17Damage(q,45)}b17Toast('☄️ Каменный метеорит!')}
+function b17MeteorRain(){
+  const end=Date.now()+10000;window.b17RainUntil=end;
+  const tick=()=>{if(Date.now()>end)return;const m=b17NearestEnemy();if(m)b17Damage(m,24);setTimeout(tick,450)};tick();
+  b17Toast('☄️ Начался метеоритный дождь');
+}
+function b17Transform(){
+  if(B17.transformed){B17.transformed=false;B17.transformEnds=0;b17Save();b17Toast('🪨 Трансформация выключена');return}
+  B17.transformed=true;B17.transformEnds=Date.now()+300000;b17Save();b17Toast('🪨 Трансформация активна: сила ↑ скорость ↓');
+}
+function b17Dimension(){
+  B17.dimensionEnds=Date.now()+180000;b17Save();
+  const end=B17.dimensionEnds;
+  const tick=()=>{if(Date.now()>end){b17Toast('🌌 Измерение исчезло');return}
+    if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)b17Damage(m,32);
+    setTimeout(tick,350)
+  };tick();b17Toast('🌌 Измерение создано на 3 минуты');
+}
+setInterval(()=>{if(B17.transformed&&Date.now()>B17.transformEnds){B17.transformed=false;b17Save();b17Toast('🪨 Трансформация завершилась') }},1000);
+
+/* Simple XP/level bridge; existing XP systems remain untouched if present. */
+window.b17AddXP=function(v){
+  B17.xp+=Math.max(0,v||0);
+  while(B17.xp >= 100 + B17.level*35){B17.xp-=100+B17.level*35;B17.level++}
+  b17Save();
+};
+
+/* Make the new ability bar easy to use without interfering with the tested controls. */
+function b17BuildBar(){
+  const bar=document.getElementById('b17Bar');
+  bar.innerHTML=B17_AB.filter(a=>b17Unlocked(a)).map(a=>`<button title="${a.name}" onclick="b17Use(${a.n})">${a.n}</button>`).join('');
+}
+b17BuildBar();
+setInterval(b17BuildBar,1500);
+</script>
 </body>
+
 </html>
