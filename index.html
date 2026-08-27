@@ -156,7 +156,11 @@ function setQuest(v){
 }
 function completeQuest(v){
  if(!v.quest || v.quest.done<v.quest.target)return;
- const reward=v.quest.reward;p.gold+=reward;v.trust=Math.min(100,v.trust+10);
+ const reward=v.quest.reward;
+ p.gold+=reward;
+ v.trust=Math.min(100,v.trust+10);
+ if(window.b171AddXP) window.b171AddXP(150 + reward, 'quest');
+ else p.xp += 150 + reward;
  v.quest=null;if(questState&&questState.villager===v.id)questState=null;
  // small word-of-mouth effect
  villagers.forEach(o=>{if(o.id!==v.id)o.trust=Math.min(100,o.trust+1)});
@@ -165,7 +169,10 @@ function completeQuest(v){
 }
 function damageMob(m,amount){
  m.hp-=amount;note(m.x,m.y-55,'-'+Math.round(amount)+' HP');
- if(m.hp<=0){mobs=mobs.filter(x=>x!==m);p.xp+=10; if(questState){questState.q.done++;if(questState.q.done>=questState.q.target){let v=villagers.find(v=>v.id===questState.villager);if(v)completeQuest(v);}} toast('⚔️ '+mobDefs[m.type].name+' побеждён');}
+ if(m.hp<=0){mobs=mobs.filter(x=>x!==m);
+   const mobXP={wolf:40,boar:55,bigboar:100,alpha:150,bear:130,stone:180}[m.type]||40;
+   if(window.b171AddXP) window.b171AddXP(mobXP,'mob'); else p.xp+=mobXP;
+   if(questState){questState.q.done++;if(questState.q.done>=questState.q.target){let v=villagers.find(v=>v.id===questState.villager);if(v)completeQuest(v);}} toast('⚔️ '+mobDefs[m.type].name+' побеждён');}
  hud();
 }
 function playerAttackHit(){
@@ -396,7 +403,7 @@ player();
  ctx.save();ctx.translate(-C.x,-C.y);notes.forEach(n=>{ctx.globalAlpha=n.l;label(n.x,n.y,n.t,14)});ctx.restore();
 }
 
-function updateQuestUI(){document.getElementById('quest').textContent=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:'👑 Цель: королевский замок'}
+function updateQuestUI(){document.getElementById('quest').textContent=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:' ' }
 function mobAI(dt){
   mobs.slice().forEach(m=>{
     const d=mobDefs[m.type],dx=p.x-m.x,dy=p.y-m.y,dd=Math.hypot(dx,dy);
@@ -434,6 +441,10 @@ function mobAI(dt){
           if(dd>d.range*.8){m.x+=Math.cos(ang)*m.speed*dt;m.y+=Math.sin(ang)*m.speed*dt}
         }
         m.x=Math.max(40,Math.min(world.w-40,m.x));m.y=Math.max(40,Math.min(world.h-40,m.y));
+        if(m.type==='stone'){
+          const zx1=610,zx2=1210,zy1=135,zy2=545;
+          m.x=Math.max(zx1+45,Math.min(zx2-45,m.x));m.y=Math.max(zy1+45,Math.min(zy2-45,m.y));
+        }
       }
     }
   });
@@ -448,10 +459,14 @@ function update(dt){
    if(combat.t>=combat.duration){combat.duration=0;combat.t=0}
  }
  notes.forEach(n=>{n.l-=dt;n.y-=18*dt});notes=notes.filter(n=>n.l>0);hud();
- let qText=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:'👑 Цель: королевский замок';document.getElementById('quest').textContent=qText;
- let C=cam(),sx=target.x-C.x,sy=target.y-C.y,ang=Math.atan2(sy-H/2,sx-W/2),ar=document.getElementById('arrow');
- if(Math.hypot(sx-W/2,sy-H/2)<180)ar.style.display='none';
- else{ar.style.display='block';ar.style.left=(W/2+Math.cos(ang)*Math.min(W,H)*.37)+'px';ar.style.top=(H/2+Math.sin(ang)*Math.min(W,H)*.37)+'px';ar.style.transform='translate(-50%,-50%) rotate('+ang+'rad)'}
+ let qText=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:' ' ;document.getElementById('quest').textContent=qText;
+ let C=cam(),ar=document.getElementById('arrow'),navTarget=window.b171Target||null;
+ if(!navTarget){ar.style.display='none';}
+ else{
+   let sx=navTarget.x-C.x,sy=navTarget.y-C.y,ang=Math.atan2(sy-H/2,sx-W/2);
+   if(Math.hypot(sx-W/2,sy-H/2)<180){ar.style.display='none';}
+   else{ar.style.display='block';ar.style.left=(W/2+Math.cos(ang)*Math.min(W,H)*.37)+'px';ar.style.top=(H/2+Math.sin(ang)*Math.min(W,H)*.37)+'px';ar.style.transform='translate(-50%,-50%) rotate('+ang+'rad)'}
+ }
 }
 function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 addEventListener('keydown',e=>keys[e.key]=true);addEventListener('keyup',e=>keys[e.key]=false);
@@ -780,6 +795,7 @@ setInterval(b17BuildBar,1500);
 (function(){
 'use strict';
 
+window.b171Target=window.b171Target||null;
 const KEY='alexander_rpg_beta17_1_state';
 const state=JSON.parse(localStorage.getItem(KEY)||'null')||{
   level:0,xp:0,buttonSizes:{},target:null,kingMet:false
@@ -816,6 +832,9 @@ window.b171AddXP=function(amount,reason){
  while(state.xp>=need(state.level)){
    state.xp-=need(state.level);state.level++;gained++;
  }
+ /* Keep the original player HUD/progression synchronized with Beta 17.1. */
+ p.level=state.level; p.xp=state.xp;
+ if(window.B17){B17.level=state.level;B17.xp=state.xp; if(typeof b17Save==='function')b17Save()}
  save();hud();
  if(gained){
    const unlocked=abilities.filter(a=>a.lvl>0&&a.lvl<=state.level&&a.lvl>state.level-gained);
@@ -930,7 +949,7 @@ window.b171OpenNav=function(){
 };
 window.b171CloseNav=function(){document.getElementById('b171-nav').style.display='none'};
 window.b171SetTarget=function(i){
- const l=locations[i];state.target={name:l.name,x:l.x,y:l.y};save();
+ const l=locations[i];state.target={name:l.name,x:l.x,y:l.y};window.b171Target={name:l.name,x:l.x,y:l.y};save();
  window.b171CloseNav();toast('🧭 Цель: '+l.name);
  updateTargetMarker();
 };
@@ -942,12 +961,12 @@ function updateTargetMarker(){
 setInterval(()=>{
  if(!state.target||!window.player)return;
  const p=pos(),d=Math.hypot(state.target.x-p.x,state.target.y-p.y);
- if(d<60){toast('📍 Вы прибыли: '+state.target.name);state.target=null;save();updateTargetMarker()}
+ if(d<60){toast('📍 Вы прибыли: '+state.target.name);state.target=null;window.b171Target=null;save();updateTargetMarker()}
 },300);
 
 /* First story target: the king, no arrow until a real target exists. */
-window.b171MeetKing=function(){state.kingMet=true;state.target=null;save();toast('👑 Король: новое задание!')};
-hud();updateTargetMarker();updatePickaxe();removeWorld();applySizes();
+window.b171MeetKing=function(){state.kingMet=true;state.target=null;window.b171Target=null;save();toast('👑 Король: новое задание!')};
+p.level=state.level; p.xp=state.xp; if(window.B17){B17.level=state.level;B17.xp=state.xp;} hud();updateTargetMarker();updatePickaxe();removeWorld();applySizes();
 })();
 </script>
 
