@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр RPG — Beta 17.1.1</title>
+<title>Александр RPG — Beta 17</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
@@ -52,41 +52,10 @@ background:#07100df2;border:1px solid #c8d3c2aa;border-radius:12px;display:none;
 #b17HandControls button{font-size:18px;padding:12px 16px;border-radius:14px;border:1px solid #ffffff55;background:#07100ddd;color:#fff}
 #b17HandStick{width:140px;height:110px;border:2px dashed #c8d3c255;border-radius:22px;background:#ffffff08;touch-action:none}
 </style>
-
-<style id="beta171-style">
-#b171-xp{position:fixed;z-index:80;left:10px;top:10px;width:min(290px,58vw);font:600 12px sans-serif;color:#fff;
-background:#07100dcc;border:1px solid #ffffff33;border-radius:12px;padding:8px;pointer-events:none}
-#b171-xpbar{height:7px;background:#ffffff22;border-radius:9px;overflow:hidden;margin-top:5px}
-#b171-xpfill{height:100%;width:0%;background:#fff;transition:width .25s}
-#b171-next{margin-top:4px;opacity:.9}
-#b171-navbtn{position:fixed;z-index:81;right:10px;top:170px;width:52px;height:52px;border-radius:14px;
-border:1px solid #ffffff44;background:#07100dcc;color:#fff;font-size:22px}
-#b171-nav{position:fixed;z-index:100;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,430px);
-max-height:80vh;overflow:auto;background:#07100df5;color:#fff;border:1px solid #ffffff44;border-radius:18px;padding:14px;display:none}
-#b171-nav h3{margin:0 0 8px}.b171-loc{width:100%;margin:5px 0;padding:10px;border-radius:11px;border:1px solid #ffffff22;
-background:#ffffff0d;color:#fff;text-align:left}.b171-loc b{float:right}
-#b171-king{position:fixed;z-index:82;left:10px;bottom:12px;display:none;padding:9px 12px;border-radius:12px;
-background:#07100dcc;color:#fff;border:1px solid #ffffff33}
-#b171-toast{position:fixed;z-index:200;left:50%;top:14%;transform:translateX(-50%);display:none;
-background:#07100df2;color:#fff;border:1px solid #ffffff55;border-radius:12px;padding:10px 14px;font-weight:800;text-align:center}
-#b171-size{margin-top:12px;border:1px solid #ffffff22;border-radius:12px;padding:10px}
-#b171-size select,#b171-size input{max-width:100%}
-#b171-pick{display:none}
-</style>
-
-<style id="b1711-fix-css">
-@keyframes b171Swing{0%{transform:rotate(0) scale(1)}35%{transform:rotate(-28deg) scale(1.04)}65%{transform:rotate(22deg) scale(1.04)}100%{transform:rotate(0) scale(1)}}
-@keyframes b171Cast{0%{transform:scale(.7);opacity:.2}45%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:0}}
-.b171-action-anim{animation:b171Swing .42s ease-out}
-.b171-cast-fx{position:fixed;z-index:120;pointer-events:none;border:3px solid #fff;border-radius:50%;width:24px;height:24px;animation:b171Cast .55s ease-out forwards}
-#b171-labelEditor{margin-top:10px;border:1px solid #ffffff22;border-radius:12px;padding:10px}
-#b171-labelEditor select,#b171-labelEditor input{max-width:100%;margin:4px 0}
-.b171-edit-label{outline:2px dashed #fff8!important;cursor:move!important}
-</style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • Beta 17.1.1</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 17.1 FIXED</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
 <button id="settingsBtn" onclick="openSettings()" aria-label="Настройки">⚙️</button><button id="b17AbilityOpen" style="position:fixed;z-index:35;right:10px;top:112px;width:48px;height:48px;padding:0;font-size:20px" onclick="b17OpenAbilities()">✨</button>
@@ -96,9 +65,9 @@ background:#07100df2;color:#fff;border:1px solid #ffffff55;border-radius:12px;pa
 <button onclick="sword()">⚔️ Меч</button>
 <button onclick="rock()">🪨 Бросок</button>
 <button onclick="flight()">🌀 Полёт</button>
-<button onclick="mineResource()">⛏️ Кирка</button>
+<button id="pickaxeBtn" onclick="mineResource()">⛏️ Кирка</button>
 <button onclick="bag()">🎒 Мешок</button>
-<button onclick="mapPanel()">🗺️ Мир</button>
+
 <button onclick="pauseGame()">Ⅱ Пауза</button>
 </div>
 <div id="panel"><div class="card" id="card"></div></div>
@@ -111,7 +80,8 @@ function resize(){W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;c.styl
 const world={w:3600,h:2400};
 const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false,gold:0,hp:100,maxHp:100};
 const bags={'Начальный (маленький)':20,'Средний':30,'Большой':50,'Очень большой':80,'Гигантский':150};
-const target={x:430,y:690};
+const target=null;
+const king={x:430,y:790};
 const keys={},joy={x:0,y:0};let paused=false,attack=0,attackKind='',pickA=0,time=0,last=performance.now();
 let notes=[],ores=[],traders=[],butterflies=[],particles=[];
 let combat={type:'',t:0,duration:0,phase:0};
@@ -164,18 +134,35 @@ function setQuest(v){
  if(v.id===1){spawnMob('wolf',360,1020);spawnMob('wolf',650,1020)}
  updateQuestUI();
 }
+const mobXP={wolf:35,alpha:140,bear:110,boar:45,bigboar:95,stone:160};
+function syncAbilityState(){
+ if(typeof B17!=='undefined'){ B17.level=p.level; B17.xp=p.xp; b17Save(); }
+}
+function addPlayerXP(amount,reason=''){
+ amount=Math.max(0,Math.floor(Number(amount)||0)); if(!amount)return;
+ p.xp+=amount;
+ while(p.xp>=nextXP()){p.xp-=nextXP();p.level++; toast('✨ Уровень '+p.level+'!');}
+ syncAbilityState(); hud();
+}
 function completeQuest(v){
  if(!v.quest || v.quest.done<v.quest.target)return;
- const reward=v.quest.reward;p.gold+=reward;v.trust=Math.min(100,v.trust+10);
+ const reward=v.quest.reward; const xpReward=120+v.id*35;
+ p.gold+=reward; v.trust=Math.min(100,v.trust+10); addPlayerXP(xpReward,'quest');
  v.quest=null;if(questState&&questState.villager===v.id)questState=null;
- // small word-of-mouth effect
  villagers.forEach(o=>{if(o.id!==v.id)o.trust=Math.min(100,o.trust+1)});
- toast('🪙 +'+reward+' золотых • ❤️ доверие '+v.name+' +10');
+ toast('🪙 +'+reward+' золота • ⭐ +'+xpReward+' XP • ❤️ доверие +10');
  updateQuestUI();hud();
 }
 function damageMob(m,amount){
  m.hp-=amount;note(m.x,m.y-55,'-'+Math.round(amount)+' HP');
- if(m.hp<=0){mobs=mobs.filter(x=>x!==m);p.xp+=10; if(questState){questState.q.done++;if(questState.q.done>=questState.q.target){let v=villagers.find(v=>v.id===questState.villager);if(v)completeQuest(v);}} toast('⚔️ '+mobDefs[m.type].name+' побеждён');}
+ if(m.hp<=0){
+   mobs=mobs.filter(x=>x!==m); addPlayerXP(mobXP[m.type]||50,'mob');
+   if(questState){
+     if(questState.q.type==='defend' && m.type!=='wolf'){} else questState.q.done++;
+     if(questState.q.done>=questState.q.target){let v=villagers.find(v=>v.id===questState.villager);if(v)completeQuest(v);}
+   }
+   toast('⚔️ '+mobDefs[m.type].name+' побеждён • ⭐ +'+(mobXP[m.type]||50)+' XP');
+ }
  hud();
 }
 function playerAttackHit(){
@@ -230,6 +217,7 @@ function rock(){
 function flight(){if(p.fly){p.fly=false;toast('🌀 Полёт выключен');return}if(p.dirt<.5||p.stone<.5){toast('⚠️ Нужно 0.5🟫 и 0.5🪨');return}p.fly=true;toast('🌀 Полёт включён')}
 function mineResource(){let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<85);if(!o){toast('⛏️ Подойди к руде');return}p.dir=Math.atan2(o.y-p.y,o.x-p.x);pickA=.75;o.h--;toast('⛏️ Удар киркой');note(o.x,o.y-45,'Осталось ударов: '+o.h);if(o.h<=0){let r=Math.random(),n=r<.65?1:r<.9?2:3;note(o.x,o.y-70,n===1?'Маленький кусок':n===2?'Средний кусок':'Большой кусок');addRes(o.type,n);o.h=o.max}}
 function interact(){
+ if(dist(p,king)<100){ open('👑 Король','<p>«Александр, тебе предстоит узнать, что происходит за пределами королевства.»</p><p>Теперь у тебя есть доступ к навигатору и новым заданиям.</p>'); return; }
  let nearVillager=villagers.find(v=>dist(p,v)<95);
  if(nearVillager){
    let v=nearVillager;
@@ -368,6 +356,7 @@ function drawVillagers(){
    if(dist(p,v)<120){ctx.strokeStyle='#e9d76b88';ctx.lineWidth=2;ctx.beginPath();ctx.arc(v.x,v.y,34,0,Math.PI*2);ctx.stroke()}
  });
 }
+function drawKing(){ circ(king.x,king.y,22,'#b97850','#2a201b'); circ(king.x,king.y-29,16,'#d4b06b','#4a321b'); rect(king.x-19,king.y+10,38,38,'#7b2630','#d8b34e'); label(king.x,king.y+62,'КОРОЛЬ',11); }
 function drawMysterious(){circ(mysterious.x,mysterious.y,24,'#b97850','#151b18');circ(mysterious.x,mysterious.y-26,15,'#101b24');poly([[mysterious.x-27,mysterious.y+4],[mysterious.x,mysterious.y-62],[mysterious.x+27,mysterious.y+4],[mysterious.x+20,mysterious.y+42],[mysterious.x-20,mysterious.y+42]],'#162b38','#77c9e8');label(mysterious.x,mysterious.y+65,'ТАИНСТВЕННЫЙ',10)}
 function drawMobs(){
  mobs.forEach(m=>{
@@ -400,8 +389,8 @@ function draw(){
  castle();renderMine();tower();wagon();
  circ(1850,980,130,'#1b332955','#9bb59c');label(1850,835,'МЕСТО БИТВЫ',14);
  circ(2050,1120,115,'#18373b55','#83c0c8');label(2050,980,'ТАИНСТВЕННЫЙ',14);
- ores.forEach(ore);traders.forEach(trader);drawMysterious();drawVillagers();drawMobs();
-player();
+ ores.forEach(ore);traders.forEach(trader);drawKing();drawMysterious();drawVillagers();drawMobs();
+player(); b17AnimDraw();
  ctx.restore();
  ctx.save();ctx.translate(-C.x,-C.y);notes.forEach(n=>{ctx.globalAlpha=n.l;label(n.x,n.y,n.t,14)});ctx.restore();
 }
@@ -451,7 +440,7 @@ function mobAI(dt){
 }
 function update(dt){
  if(paused)return;
- time+=dt;move(dt);mobAI(dt);spawnTimer+=dt;if(spawnTimer>=30){spawnTimer=0;if(Math.random()<.4)randomMobSpawn();}attack=Math.max(0,attack-dt);pickA=Math.max(0,pickA-dt);
+ time+=dt;move(dt);mobAI(dt);spawnTimer+=dt;if(spawnTimer>=30){spawnTimer=0;if(Math.random()<.4)randomMobSpawn();}attack=Math.max(0,attack-dt);pickA=Math.max(0,pickA-dt); if(b17Anim.type){b17Anim.t+=dt;if(b17Anim.t>=b17Anim.duration)b17Anim.type=null}
  if(combat.t>0 || combat.duration>0){
    combat.t+=dt;
    combat.phase=Math.min(1,combat.t/combat.duration);
@@ -459,9 +448,11 @@ function update(dt){
  }
  notes.forEach(n=>{n.l-=dt;n.y-=18*dt});notes=notes.filter(n=>n.l>0);hud();
  let qText=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:'👑 Цель: королевский замок';document.getElementById('quest').textContent=qText;
- let C=cam(),sx=target.x-C.x,sy=target.y-C.y,ang=Math.atan2(sy-H/2,sx-W/2),ar=document.getElementById('arrow');
- if(Math.hypot(sx-W/2,sy-H/2)<180)ar.style.display='none';
- else{ar.style.display='block';ar.style.left=(W/2+Math.cos(ang)*Math.min(W,H)*.37)+'px';ar.style.top=(H/2+Math.sin(ang)*Math.min(W,H)*.37)+'px';ar.style.transform='translate(-50%,-50%) rotate('+ang+'rad)'}
+ let C=cam(), goal=window.b171NavTarget || null, ar=document.getElementById('arrow');
+ if(!goal){ar.style.display='none';}
+ else{let gx=goal.x-C.x,gy=goal.y-C.y,ang=Math.atan2(gy-H/2,gx-W/2),dd=Math.hypot(gx-W/2,gy-H/2);
+   if(dd<90){ar.style.display='none';window.b171NavTarget=null;} else {ar.style.display='block';ar.style.left=(W/2+Math.cos(ang)*Math.min(W,H)*.37)+'px';ar.style.top=(H/2+Math.sin(ang)*Math.min(W,H)*.37)+'px';ar.style.transform='translate(-50%,-50%) rotate('+ang+'rad)';}
+ }
 }
 function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 addEventListener('keydown',e=>keys[e.key]=true);addEventListener('keyup',e=>keys[e.key]=false);
@@ -481,7 +472,7 @@ document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault
 
 <script>
 /* =========================
-   Beta 17.1.1 — BUTTON POSITION SAVE FIX
+   BETA 17 — BUTTON POSITION SAVE FIX
    BETA 16 — SETTINGS / MULTI-TOUCH
    ========================= */
 const B16_KEY='alexander_rpg_beta16_controls';
@@ -523,7 +514,7 @@ function b16Apply(){
 function b16MaxTouch(){return Math.max(1,Math.min(5,Number(B16.maxTouches)||2))}
 function openSettings(){
   const h=`
-  <h2>⚙️ Настройки управления — Beta 17.1.1</h2>
+  <h2>⚙️ Настройки управления — Beta 17</h2>
   <p><b>Количество пальцев:</b>
   <select id="b16Touches">${[1,2,3,4,5].map(n=>`<option value="${n}" ${B16.maxTouches==n?'selected':''}>${n}</option>`).join('')}</select></p>
   <p><b>Движение:</b>
@@ -532,13 +523,6 @@ function openSettings(){
   <p><b>Размер зоны движения:</b> <input id="b16Zone" type="range" min="120" max="360" value="${B16.zoneSize}"> <span id="b16ZoneVal">${B16.zoneSize}px</span></p>
   <p><b>Чувствительность камеры:</b> <input id="b16Sens" type="range" min=".4" max="2.5" step=".1" value="${B16.cameraSensitivity}"> <span id="b16SensVal">${B16.cameraSensitivity.toFixed(1)}</span></p>
   <p><b>Размер кнопок:</b> <input id="b16Scale" type="range" min=".7" max="1.5" step=".05" value="${B16.buttonScale}"> <span id="b16ScaleVal">${B16.buttonScale.toFixed(2)}×</span></p>
-  <div id="b171-labelEditor">
-    <b>🖱️ Редактор интерфейса</b><br>
-    <button onclick="b171EditUI('buttons')">Кнопки</button>
-    <button onclick="b171EditUI('labels')">Надписи</button>
-    <button onclick="b171StopEditUI()">Готово</button>
-    <div id="b171-labelControls"></div>
-  </div>
   <p><b>Прозрачность:</b> <input id="b16Opacity" type="range" min=".35" max="1" step=".05" value="${B16.buttonOpacity}"> <span id="b16OpacityVal">${Math.round(B16.buttonOpacity*100)}%</span></p>
   <p><button onclick="b16EditButtons()">🛠️ Переместить кнопки</button>
   <button onclick="b16Reset()">🔄 Сбросить</button></p>
@@ -554,42 +538,6 @@ function openSettings(){
     o.oninput=()=>{B16.buttonOpacity=+o.value;document.getElementById('b16OpacityVal').textContent=Math.round(B16.buttonOpacity*100)+'%';b16Apply()};
   },0);
 }
-
-window.b171UIState=JSON.parse(localStorage.getItem('alexander_rpg_beta17_ui')||'null')||{labels:{}};
-function b171UiKey(e,i){return e.id||('ui:'+i+':'+(e.textContent||'').trim().slice(0,50))}
-function b171GetLabels(){return [...document.querySelectorAll('#b171-xp,#b171-navbtn,#b171-king,#combatLabel,#editHint,#b171-next,#level,#xp,.hud,.label,.gameLabel')].filter(e=>e.offsetParent!==null)}
-function b171ApplyLabels(){
- document.querySelectorAll('[data-b171-label-key]').forEach((e)=>{
-   const p=window.b171UIState.labels[e.dataset.b171LabelKey]; if(p){e.style.position='fixed';e.style.left=p.x+'px';e.style.top=p.y+'px';e.style.right='auto';e.style.bottom='auto'}
- });
-}
-function b171EditUI(mode){
- B16.edit=true;b16Apply();
- const hint=document.getElementById('editHint'); if(hint)hint.style.display='block';
- if(mode==='labels'){
-   const labels=b171GetLabels();
-   labels.forEach((e,i)=>{
-     e.dataset.b171LabelKey=b171UiKey(e,i);e.classList.add('b171-edit-label');
-     e.onpointerdown=(ev)=>{
-       e.setPointerCapture(ev.pointerId);
-       const r=e.getBoundingClientRect(),ox=ev.clientX-r.left,oy=ev.clientY-r.top;
-       const move=(q)=>{e.style.position='fixed';e.style.left=(q.clientX-ox)+'px';e.style.top=(q.clientY-oy)+'px'};
-       const up=()=>{e.releasePointerCapture(ev.pointerId);e.onpointermove=null;
-         window.b171UIState.labels[e.dataset.b171LabelKey]={x:parseFloat(e.style.left)||0,y:parseFloat(e.style.top)||0};
-         localStorage.setItem('alexander_rpg_beta17_ui',JSON.stringify(window.b171UIState));};
-       e.onpointermove=move;e.onpointerup=up;
-     };
-   });
-   toast('🖱️ Перетаскивай надписи и отпусти палец');
- }else{
-   toast('🛠️ Перетаскивай кнопки');
- }
-}
-window.b171StopEditUI=function(){
- document.querySelectorAll('.b171-edit-label').forEach(e=>{e.classList.remove('b171-edit-label');e.onpointerdown=null});
- B16.edit=false;b16Apply();b16Save();
-}
-
 function b16SetMove(v){B16.movement=v;b16Apply();b16Save();toast(v==='zone'?'👆 Свободная зона включена':'🕹️ Джойстик включён')}
 function b16Reset(){B16={...B16_DEFAULT,positions:{}};b16Save();b16Apply();openSettings()}
 function b16SaveAndClose(){b16Save();B16.edit=false;b16Apply();b16Save();closePanel();toast('💾 Управление сохранено')}
@@ -681,14 +629,12 @@ document.addEventListener('touchstart',e=>{
 },{passive:false});
 
 b16Apply();
-b171ApplyLabels();
-setInterval(b171ApplyLabels,1000);
 </script>
 
 
 <div id="b17Msg"></div>
 <div id="b17Panel">
-  <h2>✨ Способности Александра — Beta 17.1.1</h2>
+  <h2>✨ Способности Александра — Beta 17.1</h2>
   <div id="b17Abilities"></div>
   <button onclick="b17CloseAbilities()">Закрыть</button>
 </div>
@@ -700,16 +646,14 @@ setInterval(b171ApplyLabels,1000);
 </div>
 <script>
 /* =========================
-   Beta 17.1.1 — ALEXANDER ABILITIES
+   BETA 17 — ALEXANDER ABILITIES
    ========================= */
 const B17_KEY='alexander_rpg_beta17';
 let B17=JSON.parse(localStorage.getItem(B17_KEY)||'null')||{
   level:0,xp:0,transformed:false,transformEnds:0,dimensionEnds:0
 };
-function b17Save(){localStorage.setItem(B17_KEY,JSON.stringify(B17))}
-/* Beta 17.1.1 progression sync: keep ability unlock level identical to XP HUD. */
-if(window.B171 && Number.isFinite(B171.level)){B17.level=Number(B171.level);B17.xp=Number(B171.xp)||0;}
-
+p.level=B17.level||p.level||0; p.xp=B17.xp||p.xp||0;
+function b17Save(){B17.level=p.level;B17.xp=p.xp;localStorage.setItem(B17_KEY,JSON.stringify(B17))}
 function b17Toast(t){
   const e=document.getElementById('b17Msg');e.textContent=t;e.style.display='block';
   clearTimeout(window._b17t);window._b17t=setTimeout(()=>e.style.display='none',1700);
@@ -724,7 +668,7 @@ const B17_AB=[
  {n:7,name:'Трансформация',lvl:90,desc:'Броня исчезает, появляется прочная каменная кожа; Александр крупнее и медленнее. Длительность 5 минут.'},
  {n:8,name:'Измерение',lvl:120,desc:'Создаётся каменно-земляное измерение на 3 минуты. Доступно только при активной трансформации.'}
 ];
-function b17Unlocked(a){return B17.level>=a.lvl}
+function b17Unlocked(a){return p.level>=a.lvl}
 function b17OpenAbilities(){
   const box=document.getElementById('b17Abilities');
   box.innerHTML=B17_AB.map(a=>`<div class="b17Ability"><b>${a.n}. ${a.name}</b> — уровень ${a.lvl}<br>${a.desc}<br><button ${b17Unlocked(a)?'':'disabled'} onclick="b17Use(${a.n})">${b17Unlocked(a)?'Использовать':'🔒 Заблокировано'}</button></div>`).join('');
@@ -743,12 +687,38 @@ function b17Use(n){
   if(n===7)b17Transform();
   if(n===8)b17Dimension();
 }
+let b17Anim={type:null,t:0,duration:0,x:0,y:0};
+function b17AnimStart(type,duration=.8,x=p.x,y=p.y){b17Anim={type,t:0,duration,x,y};}
+function b17AnimDraw(){
+ if(!b17Anim.type||b17Anim.t>=b17Anim.duration)return;
+ const q=b17Anim.t/b17Anim.duration, x=b17Anim.x, y=b17Anim.y;
+ ctx.save();
+ if(b17Anim.type==='earth'){
+   const rise=Math.sin(Math.min(1,q)*Math.PI)*65; ctx.globalAlpha=1-q*.3;
+   poly([[x-38,y+28],[x-20,y-rise-20],[x+5,y-rise-48],[x+32,y-rise-15],[x+45,y+30]],'#756b58','#c9b58a');
+ } else if(b17Anim.type==='meteor'){
+   const sx=x+180,sy=y-260+q*260; ctx.globalAlpha=1-q*.2; circ(sx,sy,24,'#777c78','#d2d5d0');
+   ctx.strokeStyle='#f0f0df99';ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(sx-35,sy-55);ctx.lineTo(sx,sy);ctx.stroke();
+ } else if(b17Anim.type==='rain'){
+   ctx.globalAlpha=.75; for(let i=0;i<7;i++){let a=(i/7)*Math.PI*2+q*2;let r=55+((q*170+i*23)%170);let sx=x+Math.cos(a)*r,sy=y+Math.sin(a)*r;circ(sx,sy,8,'#9b9f9b','#eee')}
+ } else if(b17Anim.type==='hand'){
+   const tx=b17HandTarget?.x??x+70,ty=b17HandTarget?.y??y;ctx.strokeStyle='#777c79';ctx.lineWidth=18;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(tx-x)*Math.min(1,q*2),y+(ty-y)*Math.min(1,q*2));ctx.stroke();
+   for(let i=0;i<4;i++){let a=Math.PI*2*i/4;ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+Math.cos(a)*22,ty+Math.sin(a)*22);ctx.stroke()}
+ } else if(b17Anim.type==='transform'){
+   ctx.globalAlpha=.18+.18*Math.sin(q*Math.PI*8);circ(x,y,42+q*12,'#7e8782','#d5dbd5');
+ } else if(b17Anim.type==='dimension'){
+   ctx.globalAlpha=.55*(1-q);ctx.strokeStyle='#c5c1a4';ctx.lineWidth=5;ctx.setLineDash([12,8]);ctx.strokeRect(x-190,y-130,380,260);ctx.setLineDash([]);
+ }
+ ctx.restore();
+}
+
 function b17NearestEnemy(){
   if(window.mobs && Array.isArray(window.mobs)){
     let best=null,d=1e9;
     for(const m of window.mobs){
       if(!m||m.dead)continue;
-      const dx=(m.x||0)-(player.x||0),dy=(m.y||0)-(player.y||0),dd=Math.hypot(dx,dy);
+      const dx=(m.x||0)-p.x,dy=(m.y||0)-p.y,dd=Math.hypot(dx,dy);
       if(dd<d){d=dd;best=m}
     }
     return best;
@@ -762,32 +732,12 @@ function b17Damage(m,amount){
   if(typeof m.takeDamage==='function')m.takeDamage(amount);
   if(m.hp<=0||m.health<=0)m.dead=true;
 }
-
-function b171AbilityFx(kind){
- const p=window.player||{x:innerWidth/2,y:innerHeight/2};
- const x=innerWidth/2, y=innerHeight/2;
- const e=document.createElement('div');e.className='b171-cast-fx';
- e.style.left=(x-12)+'px';e.style.top=(y-12)+'px';
- e.style.width=(kind==='meteor'||kind==='rain'?'70px':'24px');
- e.style.height=(kind==='meteor'||kind==='rain'?'70px':'24px');
- document.body.appendChild(e);setTimeout(()=>e.remove(),650);
- const buttons=[...document.querySelectorAll('#b17Bar button,#buttons button')];
- const b=buttons.find(q=>/^(1|2|3|4|5|6|7|8)$/.test(q.textContent.trim()));
- if(b)b.classList.add('b171-action-anim'),setTimeout(()=>b.classList.remove('b171-action-anim'),500);
-}
-
-function b17Rock(){
-  b171AbilityFx('rock');
-  const m=b17NearestEnemy(); if(m)b17Damage(m,28);
-  b17Toast('🪨 Камень и грязь летят вперёд!');
-}
-function b17Fly(){
-  b171AbilityFx('fly');window.b17Flying=!window.b17Flying;b17Toast(window.b17Flying?'🪽 Полёт включён':'🪽 Полёт выключен')}
-function b17EarthLift(){
-  b171AbilityFx('earth');const m=b17NearestEnemy();if(m){m.y=(m.y||0)-45;b17Damage(m,40)}b17Toast('🌍 Земля поднялась под врагом')}
+function b17Rock(){ const m=b17NearestEnemy(); b17AnimStart('meteor',.75,p.x,p.y); if(m)setTimeout(()=>b17Damage(m,28),350); b17Toast('🪨 Камень и грязь летят вперёд!'); }
+function b17Fly(){window.b17Flying=!window.b17Flying;b17Toast(window.b17Flying?'🪽 Полёт включён':'🪽 Полёт выключен')}
+function b17EarthLift(){const m=b17NearestEnemy(); if(m){b17AnimStart('earth',.9,m.x,m.y); setTimeout(()=>{if(!m.dead){m.y-=45;b17Damage(m,40)}},400)} else b17AnimStart('earth',.7,p.x+70,p.y); b17Toast('🌍 Земля поднялась под врагом')}
 let b17HandTarget=null,b17HandX=0,b17HandY=0;
 function b17StoneHand(){
-  b171AbilityFx('hand');
+  b17AnimStart('hand',1.1,p.x,p.y);
   window.b17HandActive=true;
   document.getElementById('b17HandControls').style.display='flex';
   b17Toast('✋ Каменная рука: время замедлено');
@@ -799,21 +749,20 @@ function b17Throw(){
   b17Damage(b17HandTarget,999999);
   b17HandTarget.dead=true;b17HandTarget=null;b17Toast('💨 Враг отброшен далеко!');
 }
-function b17Meteor(){
-  b171AbilityFx('meteor');const m=b17NearestEnemy();if(m){b17Damage(m,90);if(window.mobs)for(const q of window.mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-(m.x||0),(q.y||0)-(m.y||0))<90)b17Damage(q,45)}b17Toast('☄️ Каменный метеорит!')}
+function b17Meteor(){const m=b17NearestEnemy(); const x=m?.x??p.x,y=m?.y??p.y; b17AnimStart('meteor',1.0,x,y); setTimeout(()=>{if(m){b17Damage(m,90);if(window.mobs)for(const q of window.mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-x,(q.y||0)-y)<110)b17Damage(q,45)}},500); b17Toast('☄️ Каменный метеорит!')}
 function b17MeteorRain(){
-  b171AbilityFx('rain');
+  b17AnimStart('rain',1.0,p.x,p.y);
   const end=Date.now()+10000;window.b17RainUntil=end;
   const tick=()=>{if(Date.now()>end)return;const m=b17NearestEnemy();if(m)b17Damage(m,24);setTimeout(tick,450)};tick();
   b17Toast('☄️ Начался метеоритный дождь');
 }
 function b17Transform(){
-  b171AbilityFx('transform');
+  b17AnimStart('transform',1.1,p.x,p.y);
   if(B17.transformed){B17.transformed=false;B17.transformEnds=0;b17Save();b17Toast('🪨 Трансформация выключена');return}
   B17.transformed=true;B17.transformEnds=Date.now()+300000;b17Save();b17Toast('🪨 Трансформация активна: сила ↑ скорость ↓');
 }
 function b17Dimension(){
-  b171AbilityFx('dimension');
+  b17AnimStart('dimension',1.2,p.x,p.y);
   B17.dimensionEnds=Date.now()+180000;b17Save();
   const end=B17.dimensionEnds;
   const tick=()=>{if(Date.now()>end){b17Toast('🌌 Измерение исчезло');return}
@@ -823,8 +772,8 @@ function b17Dimension(){
 }
 setInterval(()=>{if(B17.transformed&&Date.now()>B17.transformEnds){B17.transformed=false;b17Save();b17Toast('🪨 Трансформация завершилась') }},1000);
 
-/* Simple XP/level bridge; existing XP systems remain untouched if present. */
-window.b17AddXP=function(v){ if(typeof window.b171AddXP==='function') window.b171AddXP(v,'legacy'); };
+/* Unified XP: the game's real player state is authoritative. */
+window.b17AddXP=function(v){addPlayerXP(v,'ability');};
 
 /* Make the new ability bar easy to use without interfering with the tested controls. */
 function b17BuildBar(){
@@ -834,200 +783,44 @@ function b17BuildBar(){
 b17BuildBar();
 setInterval(b17BuildBar,1500);
 </script>
-
-<div id="b171-xp">
-  <div><b id="b171-level">Уровень 0</b> · <span id="b171-xptext">0 / 100 XP</span></div>
-  <div id="b171-xpbar"><div id="b171-xpfill"></div></div>
-  <div id="b171-next">Следующая способность: Вытаскивание куска земли — ур. 15</div>
-</div>
-<button id="b171-navbtn" onclick="b171OpenNav()" aria-label="Навигатор">🧭</button>
-<div id="b171-nav">
-  <h3>🧭 Навигатор</h3>
-  <div id="b171-locations"></div>
-  <button onclick="b171CloseNav()">Закрыть</button>
-</div>
-<div id="b171-king">👑 Цель: Король</div>
-<div id="b171-toast"></div>
-
-<script id="beta171-script">
-/* =========================
-   ALEXANDER RPG — BETA 17.1
-   ========================= */
+<style id="b171-fix-style">#b171Nav{position:fixed;z-index:100;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,430px);max-height:80vh;overflow:auto;background:#07100df7;color:#fff;border:1px solid #ffffff44;border-radius:18px;padding:14px;display:none}.b171N{width:100%;margin:5px 0;padding:10px;border-radius:11px;border:1px solid #ffffff22;background:#ffffff0d;color:#fff;text-align:left}.b171N b{float:right}</style>
+<button id="b171NavButton" onclick="b171OpenNav()" style="position:fixed;z-index:36;right:10px;top:170px;width:48px;height:48px">🧭</button>
+<div id="b171Nav"><h2>🧭 Навигатор</h2><div id="b171NavList"></div><button onclick="b171CloseNav()">Закрыть</button></div>
+<script>
+window.b171NavTarget=null;
+const b171Locations=[
+ ['Королевский замок',430,790],['Деревня',520,1300],['Шахта',910,340],['Поле Ильи',420,1130],['Зона сражения',1850,980],['Таинственный человек',1510,1260],['Башня мага',2370,470]
+];
+function b171OpenNav(){const p0=window.p||{x:0,y:0};document.getElementById('b171NavList').innerHTML=b171Locations.map((l,i)=>{let d=Math.round(Math.hypot(l[1]-p0.x,l[2]-p0.y));return '<button class="b171N" onclick="b171SetNav('+i+')">'+l[0]+' <b>'+d+' px</b></button>'}).join('');document.getElementById('b171Nav').style.display='block'}
+function b171CloseNav(){document.getElementById('b171Nav').style.display='none'}
+function b171SetNav(i){let l=b171Locations[i];window.b171NavTarget={name:l[0],x:l[1],y:l[2]};b171CloseNav();toast('🧭 Цель: '+l[0])}
+</script>
+<script>
 (function(){
-'use strict';
-
-const KEY='alexander_rpg_beta17_1_state';
-const state=JSON.parse(localStorage.getItem(KEY)||'null')||{
-  level:0,xp:0,buttonSizes:{},target:null,kingMet:false
-};
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function need(lvl){return Math.max(100,100+lvl*35)}
-
-const abilities=[
- {name:'Бросок камня',lvl:0},{name:'Полёт',lvl:0},
- {name:'Вытаскивание куска земли',lvl:15},{name:'Каменная рука',lvl:30},
- {name:'Каменный метеорит',lvl:50},{name:'Метеоритный дождь',lvl:70},
- {name:'Трансформация',lvl:90},{name:'Измерение',lvl:120}
-];
-
-function toast(t){
- const e=document.getElementById('b171-toast'); e.textContent=t;e.style.display='block';
- clearTimeout(window._b171toast);window._b171toast=setTimeout(()=>e.style.display='none',1800);
-}
-function hud(){
- const n=need(state.level), pct=Math.min(100,state.xp/n*100);
- document.getElementById('b171-level').textContent='Уровень '+state.level;
- document.getElementById('b171-xptext').textContent=Math.floor(state.xp)+' / '+n+' XP';
- document.getElementById('b171-xpfill').style.width=pct+'%';
- const next=abilities.find(a=>a.lvl>state.level);
- document.getElementById('b171-next').textContent=next
-   ? 'Следующая способность: '+next.name+' — ур. '+next.lvl+' ('+(next.lvl-state.level)+' ур. осталось)'
-   : 'Все способности разблокированы';
-}
-window.b171AddXP=function(amount,reason){
- amount=Math.max(0,Number(amount)||0);
- if(!amount)return;
- state.xp+=amount;
- let gained=0;
- while(state.xp>=need(state.level)){
-   state.xp-=need(state.level);state.level++;gained++;
- }
- save();hud();
- if(gained){
-   const unlocked=abilities.filter(a=>a.lvl>0&&a.lvl<=state.level&&a.lvl>state.level-gained);
-   if(unlocked.length) toast('✨ Разблокировано: '+unlocked.map(a=>a.name).join(', '));
-   else toast('🎉 Уровень '+state.level+'!');
-   if(typeof window.b17BuildBar==='function')window.b17BuildBar();
- }
-};
-
-const rewards=[
- [/альфа.?волк|alphawolf/i,130],
- [/больш.*кабан|bigboar/i,70],
- [/камен.*монстр|stone/i,100],
- [/медвед|bear/i,85],
- [/кабан|boar/i,35],
- [/волк|wolf/i,25],
- [/таинствен.*человек|mysterious/i,250]
-];
-function rewardMob(m){
- if(!m||m._b171xpAwarded)return;
- if(!(m.dead===true||m.hp<=0||m.health<=0))return;
- const s=String(m.type||m.kind||m.name||'');
- for(const [rx,xp] of rewards)if(rx.test(s)){m._b171xpAwarded=true;window.b171AddXP(xp,'mob');break}
-}
-setInterval(()=>{
- if(Array.isArray(window.mobs))window.mobs.forEach(rewardMob);
-},300);
-
-/* Quest XP API: existing quest completion can call this; legacy quests get a safe default. */
-window.b171QuestReward=function(xp){window.b171AddXP(xp==null?100:xp,'quest')};
-window.b171QuestXP=window.b171QuestReward;
-
-/* Contextual pickaxe: hide it outside the mine. */
-function inMine(){
- if(window.isInMine===true)return true;
- if(window.player && (player.inMine===true||player.zone==='mine'||player.area==='mine'))return true;
- if(typeof window.getCurrentZone==='function'){
-   const z=window.getCurrentZone(); if(z && /mine|шахт/i.test(String(z)))return true;
- }
- const p=window.player;if(!p)return false;
- const zones=[window.mineZone,window.minesZone].filter(Boolean);
- return zones.some(z=>p.x>=z.x&&p.x<=z.x+z.w&&p.y>=z.y&&p.y<=z.y+z.h);
-}
-function updatePickaxe(){
- const candidates=[...document.querySelectorAll('button,[role=button]')];
- const b=document.getElementById('pickaxe')||candidates.find(e=>/⛏|кирк/i.test(e.textContent||''));
- if(b)b.style.display=inMine()?'':'none';
-}
-setInterval(updatePickaxe,250);
-
-/* Remove obsolete World button. */
-function removeWorld(){
- document.querySelectorAll('button,[role=button]').forEach(e=>{
-   if(/^\s*(🌍\s*)?мир\s*$/i.test(e.textContent||''))e.remove();
- });
-}
-setInterval(removeWorld,1000);removeWorld();
-
-/* Per-button sizing in settings. */
-function buttonList(){return [...document.querySelectorAll('button,[role=button]')].filter(e=>e.id!=='b171-navbtn'&&!e.closest('#b171-nav'))}
-function applySizes(){
- buttonList().forEach((b,i)=>{
-   const k=b.id||('text:'+b.textContent.trim().slice(0,50));
-   const v=Number(state.buttonSizes[k]);
-   if(v&&v!==1)b.style.transform='scale('+v+')';
- });
-}
-function sizeUI(){
- const settings=[...document.querySelectorAll('div,section')].find(e=>/настройк|settings/i.test(e.textContent||'')&&e.querySelector('button'));
- if(!settings||document.getElementById('b171-size'))return;
- const box=document.createElement('div');box.id='b171-size';
- box.innerHTML='<b>📐 Размер кнопок</b><br><button id="b171-all">Все</button> <button id="b171-one">Выбрать кнопку</button><div id="b171-editor"></div>';
- settings.appendChild(box);
- document.getElementById('b171-all').onclick=()=>{
-   const ed=document.getElementById('b171-editor');
-   ed.innerHTML='<input id="b171-allr" type="range" min=".7" max="1.5" step=".05" value="1"><span id="b171-allv">1.00×</span>';
-   document.getElementById('b171-allr').oninput=e=>{
-     const v=+e.target.value;document.getElementById('b171-allv').textContent=v.toFixed(2)+'×';
-     buttonList().forEach(b=>{const k=b.id||('text:'+b.textContent.trim().slice(0,50));state.buttonSizes[k]=v;b.style.transform='scale('+v+')'});save();
-   };
- };
- document.getElementById('b171-one').onclick=()=>{
-   const ed=document.getElementById('b171-editor'),bs=buttonList();
-   ed.innerHTML='<select id="b171-sel">'+bs.map((b,i)=>'<option value="'+i+'">'+(b.textContent.trim()||('Кнопка '+(i+1)))+'</option>').join('')+
-     '</select><br><input id="b171-r" type="range" min=".7" max="1.5" step=".05" value="1"><span id="b171-v">1.00×</span>';
-   const sel=document.getElementById('b171-sel'),r=document.getElementById('b171-r');
-   function sync(){const b=bs[+sel.value];const k=b.id||('text:'+b.textContent.trim().slice(0,50));const v=Number(state.buttonSizes[k]||1);r.value=v;document.getElementById('b171-v').textContent=v.toFixed(2)+'×'}
-   sel.onchange=sync;
-   r.oninput=e=>{const b=bs[+sel.value],v=+e.target.value,k=b.id||('text:'+b.textContent.trim().slice(0,50));state.buttonSizes[k]=v;b.style.transform='scale('+v+')';document.getElementById('b171-v').textContent=v.toFixed(2)+'×';save()};
-   sync();
- };
-}
-setInterval(sizeUI,700);setInterval(applySizes,1000);
-
-/* Navigator. Locations are data, so Beta 18 can add more without changing the UI. */
-const locations=[
- {name:'Король',x:300,y:300,story:true},
- {name:'Деревня',x:0,y:0},
- {name:'Шахта',x:900,y:250},
- {name:'Поле Ильи',x:600,y:700},
- {name:'Зона сражения',x:1150,y:650},
- {name:'Таинственный человек',x:1450,y:350}
-];
-function pos(){return window.player?{x:Number(player.x)||0,y:Number(player.y)||0}:{x:0,y:0}}
-window.b171OpenNav=function(){
- const p=pos(),box=document.getElementById('b171-locations');
- box.innerHTML=locations.map((l,i)=>{
-   const d=Math.round(Math.hypot(l.x-p.x,l.y-p.y));
-   return '<button class="b171-loc" onclick="b171SetTarget('+i+')">'+l.name+' <b>'+d+' px</b></button>';
- }).join('');
- document.getElementById('b171-nav').style.display='block';
-};
-window.b171CloseNav=function(){document.getElementById('b171-nav').style.display='none'};
-window.b171SetTarget=function(i){
- const l=locations[i];state.target={name:l.name,x:l.x,y:l.y};save();
- window.b171CloseNav();toast('🧭 Цель: '+l.name);
- updateTargetMarker();
-};
-function updateTargetMarker(){
- const k=document.getElementById('b171-king');
- k.style.display=state.target?'block':'none';
- if(state.target)k.textContent='🧭 Цель: '+state.target.name;
-}
-setInterval(()=>{
- if(!state.target||!window.player)return;
- const p=pos(),d=Math.hypot(state.target.x-p.x,state.target.y-p.y);
- if(d<60){toast('📍 Вы прибыли: '+state.target.name);state.target=null;save();updateTargetMarker()}
-},300);
-
-/* First story target: the king, no arrow until a real target exists. */
-window.b171MeetKing=function(){state.kingMet=true;state.target=null;save();toast('👑 Король: новое задание!')};
-if(window.B17){B171.level=Number(B17.level)||0;B171.xp=Number(B17.xp)||0;save();}
-hud();updateTargetMarker();updatePickaxe();removeWorld();applySizes();b171ApplyLabels();
+ const pb=document.getElementById('pickaxeBtn');
+ function mineHere(){return p.x>=610&&p.x<=1210&&p.y>=135&&p.y<=545}
+ function upd(){if(pb)pb.style.display=mineHere()?'':'none'}
+ setInterval(upd,150);upd();
 })();
 </script>
-
+<script>
+(function(){
+ const labelIds=['hud','title','quest'];
+ const K='alexander_rpg_label_positions'; let pos=JSON.parse(localStorage.getItem(K)||'{}');
+ function apply(){labelIds.forEach(id=>{let e=document.getElementById(id),q=pos[id];if(q){e.style.position='fixed';e.style.left=q.x+'px';e.style.top=q.y+'px';e.style.right='auto';e.style.bottom='auto';e.style.transform=id==='quest'?'none':'none'}})}
+ function editLabels(){
+   document.getElementById('editHint').textContent='🏷️ Перетаскивайте надписи • Позиции сохраняются автоматически';document.getElementById('editHint').style.display='block';
+   labelIds.forEach(id=>{let e=document.getElementById(id); if(!e)return; e.style.pointerEvents='auto';e.dataset.drag='1'; let active=null;
+     e.addEventListener('touchstart',ev=>{let q=ev.changedTouches[0];active={id:q.identifier,dx:q.clientX-e.getBoundingClientRect().left,dy:q.clientY-e.getBoundingClientRect().top};ev.preventDefault()},{passive:false});
+     e.addEventListener('touchmove',ev=>{if(!active)return;for(let q of ev.changedTouches)if(q.identifier===active.id){e.style.position='fixed';e.style.left=Math.max(2,Math.min(innerWidth-e.offsetWidth-2,q.clientX-active.dx))+'px';e.style.top=Math.max(2,Math.min(innerHeight-e.offsetHeight-2,q.clientY-active.dy))+'px';e.style.right='auto';e.style.bottom='auto';pos[id]={x:parseFloat(e.style.left),y:parseFloat(e.style.top)};localStorage.setItem(K,JSON.stringify(pos));ev.preventDefault()}},{passive:false});
+     e.addEventListener('touchend',()=>active=null,{passive:true});
+   });
+ }
+ window.b16EditLabels=editLabels; apply();
+ const old=window.openSettings;
+ window.openSettings=function(){old();setTimeout(()=>{let c=document.getElementById('card');if(c&&!document.getElementById('b171LabelBtn')){let b=document.createElement('button');b.id='b171LabelBtn';b.textContent='🏷️ Переместить надписи';b.onclick=()=>{closePanel();editLabels()};c.appendChild(b)}},20)};
+})();
+</script>
 </body>
 
 </html>
