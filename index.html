@@ -1002,31 +1002,50 @@ setInterval(function(){
 </script>
 
 
-<script id="beta171-multitouch-throw-fix">
+
+
+
+<script id="beta171-multitouch-real-fix">
 (function(){
-  const controls=document.getElementById('b17HandControls');
-  const grab=document.querySelector('#b17HandControls button[onclick*="b17Grab"]');
-  const thr=document.querySelector('#b17HandControls button[onclick*="b17Throw"]');
-  if(!controls||!grab||!thr)return;
+  const handControls=document.getElementById('b17HandControls');
+  const handStick=document.getElementById('b17HandStick');
+  if(!handControls)return;
 
-  controls.style.touchAction='none';
-  controls.style.webkitUserSelect='none';
+  // Do not alter the game's configured finger-count/maxTouches system.
+  // We only isolate the Stone Hand controls from other active touches.
+  handControls.style.touchAction='none';
+  handControls.style.webkitUserSelect='none';
+  if(handStick)handStick.style.touchAction='none';
 
-  function bind(btn, fn){
-    if(btn.dataset.mtBound)return;
-    btn.dataset.mtBound='1';
-    btn.style.touchAction='none';
-    btn.addEventListener('touchstart',function(e){
+  const buttons=Array.from(handControls.querySelectorAll('button'));
+  const bound=new WeakSet();
+
+  buttons.forEach(btn=>{
+    if(bound.has(btn))return;
+    bound.add(btn);
+
+    // Stop the hand-control touch from bubbling into player/joystick handlers.
+    // pointerdown gives each finger its own pointerId, so a second finger can
+    // press a button without cancelling the first finger's joystick input.
+    btn.addEventListener('pointerdown',function(e){
       e.preventDefault();
       e.stopPropagation();
-      fn();
-    },{passive:false});
-  }
+      if(e.pointerType==='touch' && btn.setPointerCapture){
+        try{btn.setPointerCapture(e.pointerId)}catch(_){}
+      }
 
-  // A second finger can now press either button while the first finger
-  // remains on the hand joystick/player control.
-  bind(grab, b17Grab);
-  bind(thr, b17Throw);
+      const onclick=btn.getAttribute('onclick')||'';
+      if(onclick.includes('b17Grab')) b17Grab();
+      else if(onclick.includes('b17Throw')) b17Throw();
+    },{passive:false});
+
+    // Prevent synthetic click from invoking the action a second time.
+    btn.addEventListener('click',function(e){
+      if(e.detail===0)return;
+      e.preventDefault();
+      e.stopPropagation();
+    },{passive:false});
+  });
 })();
 </script>
 
