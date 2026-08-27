@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр RPG — Beta 15</title>
+<title>Александр RPG — Beta 15 Fix 3</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
@@ -35,7 +35,7 @@ button:active{transform:scale(.95);background:#41553f}
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 15 • STORY UPDATE</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 15 • STORY UPDATE • FIX 3</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="buttons">
@@ -56,36 +56,32 @@ let W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1);
 function resize(){W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
 
 const world={w:3600,h:2400};
-const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false,gold:0};
+const p={x:540,y:1010,dir:0,level:0,xp:0,dirt:7,stone:8,cap:20,bag:'Начальный (маленький)',fly:false,gold:0,hp:100,maxHp:100};
 const bags={'Начальный (маленький)':20,'Средний':30,'Большой':50,'Очень большой':80,'Гигантский':150};
 const target={x:430,y:690};
 const keys={},joy={x:0,y:0};let paused=false,attack=0,attackKind='',pickA=0,time=0,last=performance.now();
-let notes=[],ores=[],traders=[],butterflies=[],particles=[];
+let notes=[],ores=[],traders=[],particles=[];
 let mobs=[],mobGroups=0,spawnTimer=0,storyStage=0,storyMetWagon=false,quest=null;
 const mobLimits={boarPack:2,bigBoar:1,stoneMonster:1,wolfPack:3,alphaWolf:2,bear:2};
 const trust={Илья:0,Борис:0,Марк:0,Роман:0,Лев:0,Степан:0,Данил:0,Олег:0,Фёдор:0,Пётр:0};
 const mobNames={boarPack:'Стая кабанов',bigBoar:'Большой кабан',stoneMonster:'Каменный монстр',wolfPack:'Стая волков',alphaWolf:'Альфа-волк',bear:'Медведь'};
 let combat={type:'',t:0,duration:0,phase:0};
 let villagers=[
- {id:1,name:'Илья',role:'Фермер',color:'#2f6fb0',x:3200,y:980},
- {id:2,name:'Борис',role:'Лесоруб',color:'#3f8f52',x:3370,y:1050},
- {id:3,name:'Марк',role:'Торговец',color:'#d6b52e',x:3510,y:930},
- {id:4,name:'Роман',role:'Кузнец',color:'#a83b3b',x:3650,y:1090},
- {id:5,name:'Лев',role:'Алхимик',color:'#7445a8',x:3790,y:960},
- {id:6,name:'Степан',role:'Шахтёр',color:'#76513a',x:3930,y:1080},
- {id:7,name:'Данил',role:'Целитель',color:'#e8e8e8',x:4070,y:940},
- {id:8,name:'Олег',role:'Охотник',color:'#d47b24',x:4210,y:1060},
- {id:9,name:'Фёдор',role:'Рыбак',color:'#4aa8c7',x:4350,y:950},
- {id:10,name:'Пётр',role:'Пекарь',color:'#d889a9',x:4490,y:1070}
+ {id:1,name:'Илья',role:'Фермер',color:'#2f6fb0',x:360,y:1180},
+ {id:2,name:'Борис',role:'Лесоруб',color:'#3f8f52',x:510,y:1180},
+ {id:3,name:'Марк',role:'Торговец',color:'#d6b52e',x:660,y:1180},
+ {id:4,name:'Роман',role:'Кузнец',color:'#a83b3b',x:360,y:1325},
+ {id:5,name:'Лев',role:'Алхимик',color:'#7445a8',x:510,y:1325},
+ {id:6,name:'Степан',role:'Шахтёр',color:'#76513a',x:660,y:1325},
+ {id:7,name:'Данил',role:'Целитель',color:'#e8e8e8',x:360,y:1470},
+ {id:8,name:'Олег',role:'Охотник',color:'#d47b24',x:510,y:1470},
+ {id:9,name:'Фёдор',role:'Рыбак',color:'#4aa8c7',x:660,y:1470},
+ {id:10,name:'Пётр',role:'Пекарь',color:'#d889a9',x:510,y:1615}
 ];
 let traitorCount=0, traitorIds=new Set();
-// Beta 15: NPC positions are anchored around Alexander when the village area is rendered.
+// Beta 15 FIX: residents have fixed world positions and never follow Alexander.
 function npcWorldPositions(){
-  return villagers.map((v,i)=>({
-    v,
-    x:p.x+(i%5-2)*70,
-    y:p.y+Math.floor(i/5)*75+85
-  }));
+  return villagers.map(v=>({v,x:v.x,y:v.y}));
 }
 
 function chooseTraitors(){
@@ -104,7 +100,7 @@ setTimeout(()=>toast('🏘️ Жители деревни появились'),9
 
 function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1250)}
 function nextXP(){return 100+p.level*10}
-function hud(){document.getElementById('hud').innerHTML='<b>Александр</b><br>Уровень: '+p.level+' • XP: '+Math.floor(p.xp)+' / '+nextXP()+'<br>🪙 '+p.gold+' золотых<br>'+p.dirt.toFixed(1)+'🟫, '+p.stone.toFixed(1)+'🪨 / '+p.cap+'<br>🎒 '+p.bag+(quest?'<br>📜 '+quest.text:'')}
+function hud(){document.getElementById('hud').innerHTML='<b>Александр</b><br>❤️ '+Math.ceil(p.hp)+' / '+p.maxHp+'<br>Уровень: '+p.level+' • XP: '+Math.floor(p.xp)+' / '+nextXP()+'<br>🪙 '+p.gold+' золотых<br>'+p.dirt.toFixed(1)+'🟫, '+p.stone.toFixed(1)+'🪨 / '+p.cap+'<br>🎒 '+p.bag+(quest?'<br>📜 '+quest.text:'')}
 function note(x,y,t){notes.push({x,y,t,l:1})}
 function addRes(type,n){let room=Math.max(0,p.cap-p.dirt-p.stone),g=Math.min(n,room);if(!g){toast('🎒 Мешок заполнен');return}p[type]+=g;note(p.x+Math.random()*80-40,p.y-45,'+'+g+(type==='stone'?'🪨':'🟫'));hud()}
 function spend(a,b){if(p.dirt<a||p.stone<b){toast('⚠️ Недостаточно ресурсов');return false}p.dirt-=a;p.stone-=b;hud();return true}
@@ -120,7 +116,7 @@ function combatFx(type,labelText){
  lb.textContent=labelText;lb.classList.add('show');fl.style.opacity='.85';
  clearTimeout(combatFx.timer);combatFx.timer=setTimeout(()=>{lb.classList.remove('show');fl.style.opacity='0'},180);
 }
-function sword(){combatFx('sword','⚔️ УДАР!');toast('⚔️ Меч — мощный замах')}
+function sword(){combatFx('sword','⚔️ УДАР!');playerSwordHit();toast('⚔️ Меч — мощный замах')}
 
 function rock(){
  if(spend(1,1)){combatFx('rock','🪨 БРОСОК!');toast('🪨 Камень полетел')}
@@ -162,7 +158,7 @@ function validSpawnPoint(type){
 function spawnMob(type,fromQuest=false){
   if(type!=='story'){ if(countMob(type)>=mobLimits[type])return false; }
   let pos=validSpawnPoint(type); if(!pos)return false;
-  let m={type,x:pos.x,y:pos.y,alive:true,hp:100,maxHp:100,phase:Math.random()*6.28,packId:null};
+  let m={type,x:pos.x,y:pos.y,alive:true,hp:100,maxHp:100,phase:Math.random()*6.28,packId:null,cooldown:0,warn:0,attackLock:false,questTagged:!!fromQuest};
   if(type==='wolfPack'||type==='boarPack'){
     m.members=type==='wolfPack'?3+Math.floor(Math.random()*3):3+Math.floor(Math.random()*3);
     m.hp=120;m.maxHp=120;
@@ -199,7 +195,7 @@ function wagonTalk(){
 }
 function startVillageQuest(){
   const v=villagers.find(v=>v.id===1);
-  if(Math.hypot(p.x-(3200),p.y-980)<200){open('💬 Илья','<p><b>Фермер</b></p><p>«Александр, защити мой урожай!»</p><button onclick="acceptIlyaQuest()">Принять квест</button>');return true}
+  if(Math.hypot(p.x-360,p.y-1180)<200){open('💬 Илья','<p><b>Фермер</b></p><p>«Александр, защити мой урожай!»</p><button onclick="acceptIlyaQuest()">Принять квест</button>');return true}
   return false;
 }
 function updateQuestProgress(){
@@ -215,7 +211,7 @@ function setup(){
   [870,405,'stone'],[980,520,'dirt']
  ].map(a=>({x:a[0],y:a[1],type:a[2],h:4,max:4}));
  traders=[{x:1520,y:1410},{x:2280,y:520},{x:2720,y:1480}];
- for(let i=0;i<8;i++)butterflies.push({x:1280+(i*233)%1700,y:250+(i*317)%1750,a:i*.8,s:.6+Math.random()*.5});
+ // No decorative butterfly entities in Beta 15 FIX.
 }setup();
 
 function move(dt){
@@ -256,8 +252,6 @@ function tower(){
 function wagon(){rect(1415,1365,185,95,'#70472f','#c9a45d');circ(1450,1477,28,'#252525');circ(1560,1477,28,'#252525');circ(1510,1328,34,'#d9b98e');label(1510,1518,'ПОВОЗКА',13)}
 function ore(o){let col=o.type==='stone'?'#aab2ae':'#855b3c';poly([[o.x-35,o.y+22],[o.x-22,o.y-28],[o.x+12,o.y-42],[o.x+40,o.y-5],[o.x+28,o.y+32]],col,'#313732');label(o.x,o.y+60,'⛏️ '+o.h,11)}
 function trader(t){circ(t.x,t.y,28,'#111514','#aab3a8');poly([[t.x-40,t.y-5],[t.x,t.y-65],[t.x+40,t.y-5],[t.x+30,t.y+45],[t.x-30,t.y+45]],'#090a0a');label(t.x,t.y+68,'ТОРГОВЕЦ',10)}
-function butterfly(b){b.a+=.018;let x=b.x+Math.sin(b.a)*35,y=b.y+Math.cos(b.a*.8)*24;ctx.strokeStyle=['#ffd34d','#64b8ff','#d28cff','#ff8bb7','#8be36b'][Math.floor(b.a*2)%5]+'88';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-Math.cos(b.a)*25,y-Math.sin(b.a)*25);ctx.stroke();circ(x-6,y,5,'#f1e6b0');circ(x+6,y,5,'#f1e6b0');circ(x,y,3,'#333')}
-
 function drawMob(m){
   if(!m.alive)return;
   const bob=Math.sin(time*2+m.phase)*2;
@@ -281,24 +275,93 @@ function drawMob(m){
   }
   if(m.hp<m.maxHp){ctx.fillStyle='#111';ctx.fillRect(m.x-35,m.y-65,70,6);ctx.fillStyle='#e56';ctx.fillRect(m.x-35,m.y-65,70*Math.max(0,m.hp/m.maxHp),6)}
 }
+function damageMob(m,amount){
+  if(!m.alive)return;
+  m.hp-=amount;
+  note(m.x,m.y-78,'-'+amount);
+  if(m.hp<=0){
+    m.hp=0;m.alive=false;
+    markQuestMob(m);
+    toast('⚔️ '+mobNames[m.type]+' повержен');
+    updateQuestProgress();
+  }
+}
+
+function playerSwordHit(){
+  const reach=120;
+  for(const m of mobs){
+    if(!m.alive)continue;
+    const dx=m.x-p.x,dy=m.y-p.y,d=Math.hypot(dx,dy);
+    if(d>reach)continue;
+    let a=Math.atan2(dy,dx),diff=Math.atan2(Math.sin(a-p.dir),Math.cos(a-p.dir));
+    if(Math.abs(diff)<1.15){
+      const dmg=m.type==='stoneMonster'?90:60;
+      damageMob(m,dmg);
+    }
+  }
+}
+
 function updateMobs(dt){
-  for(const m of mobs){if(!m.alive)continue;
+  for(const m of mobs){
+    if(!m.alive)continue;
     m.phase+=dt;
     const d=Math.hypot(p.x-m.x,p.y-m.y);
-    const speed=m.type==='stoneMonster'?20:m.type==='bear'?45:m.type==='bigBoar'?75:95;
-    if(d>110){m.x+=(p.x-m.x)/d*speed*dt;m.y+=(p.y-m.y)/d*speed*dt}
-    if(d<75 && Math.random()<dt*.22){
-      const dmg=m.type==='stoneMonster'?35:m.type==='bear'?28:m.type==='bigBoar'?32:20;
-      // Enemy attack is represented visually by a red warning area.
-      m.warn=.7;m.warnX=p.x;m.warnY=p.y;
-      if(Math.random()<.45) toast('🔴 '+mobNames[m.type]+' атакует!');
-      if(Math.random()<.18){m.alive=false;markQuestMob(m);toast('⚔️ '+mobNames[m.type]+' повержен');}
+    const speed=m.type==='stoneMonster'?24:m.type==='bear'?48:m.type==='bigBoar'?82:m.type==='alphaWolf'?115:105;
+
+    // Approach only when outside preferred combat distance.
+    const preferred=m.type==='stoneMonster'?135:120;
+    if(d>preferred){
+      m.x+=(p.x-m.x)/Math.max(d,1)*speed*dt;
+      m.y+=(p.y-m.y)/Math.max(d,1)*speed*dt;
     }
-    if(m.warn){m.warn-=dt;if(m.warn<=0)m.warn=0}
+
+    m.cooldown=Math.max(0,(m.cooldown||0)-dt);
+    m.warn=Math.max(0,(m.warn||0)-dt);
+
+    // Every mob uses a readable, fixed warning point.
+    if(!m.attackLock && d<=preferred+15 && m.cooldown<=0){
+      m.attackLock=true;
+      m.warn=.7;
+      m.warnX=p.x; m.warnY=p.y;
+      m.hitAt=.7;
+      m.cooldown=m.type==='stoneMonster'?2.0:m.type==='bear'?1.7:m.type==='bigBoar'?1.2:1.0;
+      m.attackDamage=m.type==='stoneMonster'?35:m.type==='bear'?28:m.type==='bigBoar'?32:m.type==='alphaWolf'?24:20;
+      m.attackRadius=m.type==='stoneMonster'?72:55;
+    }
+
+    if(m.attackLock){
+      m.hitAt-=dt;
+      if(m.hitAt<=0){
+        m.attackLock=false;
+        const hitDist=Math.hypot(p.x-m.warnX,p.y-m.warnY);
+        if(hitDist<m.attackRadius){
+          p.hp=Math.max(0,p.hp-m.attackDamage);
+          toast('💥 '+mobNames[m.type]+' попал! -'+m.attackDamage+' HP');
+          hud();
+          if(p.hp<=0){
+            p.hp=p.maxHp;p.x=540;p.y=1010;
+            toast('❤️ Александр потерял сознание и вернулся в деревню');
+          }
+        }
+      }
+    }
   }
-  mobs=mobs.filter(m=>m.alive||m.questTagged);
 }
-function drawMobWarnings(){for(const m of mobs){if(m.warn>0){ctx.save();ctx.globalAlpha=Math.min(.28,m.warn*.35);ctx.fillStyle='#f33';ctx.beginPath();ctx.arc(m.warnX,m.warnY,42,0,Math.PI*2);ctx.fill();ctx.restore()}}}
+
+function drawMobWarnings(){
+  for(const m of mobs){
+    if(m.warn<=0)continue;
+    ctx.save();
+    ctx.globalAlpha=Math.min(.30,m.warn*.42);
+    ctx.fillStyle='#f33';
+    if(m.type==='stoneMonster'){
+      ctx.beginPath();ctx.arc(m.warnX,m.warnY,72,0,Math.PI*2);ctx.fill();
+    }else{
+      ctx.beginPath();ctx.arc(m.warnX,m.warnY,42,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+}
 
 function player(){
   circ(p.x,p.y,21,'#b97850','#2a201b');
@@ -389,7 +452,7 @@ function draw(){
   circ(1510,1385,18,'#3b596b','#10191f');label(1510,1355,'🧙',18);label(1510,1325,'ТАИНСТВЕННЫЙ',11);
  circ(1850,980,130,'#1b332955','#9bb59c');label(1850,835,'МЕСТО БИТВЫ',14);
  circ(2050,1120,115,'#18373b55','#83c0c8');label(2050,980,'ТАИНСТВЕННЫЙ',14);
- ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);mobs.forEach(drawMob);drawMobWarnings();drawVillagers();
+ ores.forEach(ore);mobs.forEach(drawMob);drawMobWarnings();drawVillagers();
 player();
  ctx.restore();
  ctx.save();ctx.translate(-C.x,-C.y);notes.forEach(n=>{ctx.globalAlpha=n.l;label(n.x,n.y,n.t,14)});ctx.restore();
