@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Александр RPG — Beta 12</title>
+<title>Александр RPG — Beta 13</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10160f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;touch-action:none}
@@ -27,11 +27,15 @@ button:active{transform:scale(.95);background:#41553f}
 #combatFlash{position:fixed;inset:0;z-index:55;pointer-events:none;opacity:0;background:radial-gradient(circle,rgba(255,255,255,.34),rgba(255,80,40,0) 55%);transition:opacity .08s}
 #combatLabel{position:fixed;z-index:56;left:50%;top:38%;transform:translate(-50%,-50%) scale(.7);font-size:28px;font-weight:1000;text-shadow:0 3px 10px #000;opacity:0;pointer-events:none;transition:.16s}
 #combatLabel.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* Beta 13 — Living World NPCs */
+.npcTag{font-weight:900;text-shadow:0 2px 5px #000}
+.traitorHint{color:#ff7777;font-weight:900}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 12</div>
+<div id="hud"></div><div id="title">ALEXANDER RPG • BETA 13</div>
 <div id="quest">👑 Цель: королевский замок</div><div id="arrow">➤</div><div id="toast"></div><div id="combatFlash"></div><div id="combatLabel"></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="buttons">
@@ -58,6 +62,32 @@ const target={x:430,y:690};
 const keys={},joy={x:0,y:0};let paused=false,attack=0,attackKind='',pickA=0,time=0,last=performance.now();
 let notes=[],ores=[],traders=[],butterflies=[],particles=[];
 let combat={type:'',t:0,duration:0,phase:0};
+let villagers=[
+ {id:1,name:'Илья',role:'Фермер',color:'#2f6fb0',x:3200,y:980},
+ {id:2,name:'Борис',role:'Лесоруб',color:'#3f8f52',x:3370,y:1050},
+ {id:3,name:'Марк',role:'Торговец',color:'#d6b52e',x:3510,y:930},
+ {id:4,name:'Роман',role:'Кузнец',color:'#a83b3b',x:3650,y:1090},
+ {id:5,name:'Лев',role:'Алхимик',color:'#7445a8',x:3790,y:960},
+ {id:6,name:'Степан',role:'Шахтёр',color:'#76513a',x:3930,y:1080},
+ {id:7,name:'Данил',role:'Целитель',color:'#e8e8e8',x:4070,y:940},
+ {id:8,name:'Олег',role:'Охотник',color:'#d47b24',x:4210,y:1060},
+ {id:9,name:'Фёдор',role:'Рыбак',color:'#4aa8c7',x:4350,y:950},
+ {id:10,name:'Пётр',role:'Пекарь',color:'#d889a9',x:4490,y:1070}
+];
+let traitorCount=0, traitorIds=new Set();
+function chooseTraitors(){
+  // 0..3 traitors, with fewer traitors more common.
+  let r=Math.random();
+  traitorCount = r<0.45?0:r<0.78?1:r<0.95?2:3;
+  let pool=[...villagers];
+  while(traitorIds.size<traitorCount){
+    let n=pool[Math.floor(Math.random()*pool.length)];
+    traitorIds.add(n.id);
+  }
+}
+chooseTraitors();
+setTimeout(()=>toast('🏘️ Жители деревни появились'),900);
+
 
 function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1250)}
 function nextXP(){return 100+p.level*10}
@@ -89,7 +119,17 @@ function interact(){
  if(d<170){open('👑 Королевский зал','<p>Просторная высокая постройка из мрамора с золотой крышей и большими окнами. Снаружи — цветы и кусты.</p><p>Внутри красный ковёр ведёт к ступеням и королевскому креслу: красная кожа, золотые края, высокая спинка и подлокотники.</p><p>Рядом стоят гвардейцы с копьями, а на кресле сидит король.</p>');return}
  let tr=traders.find(t=>Math.hypot(p.x-t.x,p.y-t.y)<120);
  if(tr){open('🛒 Таинственный торговец',`<p>Торговец резко раскрывает тёмное платье — внутри спрятаны товары.</p><button onclick="buy(500,30,'Средний')">Средний — 500 XP</button><button onclick="buy(777,50,'Большой')">Большой — 777 XP</button><br><button onclick="buy(1000,80,'Очень большой')">Очень большой — 1000 XP</button><button onclick="buy(1500,150,'Гигантский')">Гигантский — 1500 XP</button>`);return}
- let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mineResource();return}
+ 
+  let nearVillager=villagers.find(v=>Math.hypot(p.x-v.x,p.y-v.y)<85);
+  if(nearVillager){
+    let isTraitor=traitorIds.has(nearVillager.id);
+    open('💬 '+nearVillager.name,
+      '<p><b>'+nearVillager.role+'</b></p>'+
+      '<p>'+ (isTraitor ? 'Житель дружелюбно разговаривает с Александром. Он кажется надёжным.' : 'Житель занят своими делами и приветствует Александра.') +'</p>'+
+      '<p>Сейчас он выглядит совершенно обычным жителем деревни.</p>');
+    return;
+  }
+let o=ores.find(o=>Math.hypot(p.x-o.x,p.y-o.y)<90);if(o){mineResource();return}
 }
 function buy(cost,cap,name){if(p.xp<cost){toast('❌ Опыта недостаточно');return}p.xp-=cost;p.cap=cap;p.bag=name;hud();toast('🎒 Куплен '+name);closePanel()}
 
@@ -209,7 +249,8 @@ function draw(){
  castle();renderMine();tower();wagon();
  circ(1850,980,130,'#1b332955','#9bb59c');label(1850,835,'МЕСТО БИТВЫ',14);
  circ(2050,1120,115,'#18373b55','#83c0c8');label(2050,980,'ТАИНСТВЕННЫЙ',14);
- ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);player();
+ ores.forEach(ore);traders.forEach(trader);butterflies.forEach(butterfly);drawVillagers();
+player();
  ctx.restore();
  ctx.save();ctx.translate(-C.x,-C.y);notes.forEach(n=>{ctx.globalAlpha=n.l;label(n.x,n.y,n.t,14)});ctx.restore();
 }
