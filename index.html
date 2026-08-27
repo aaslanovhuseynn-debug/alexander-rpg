@@ -73,6 +73,16 @@ background:#07100df2;color:#fff;border:1px solid #ffffff55;border-radius:12px;pa
 #b171-size select,#b171-size input{max-width:100%}
 #b171-pick{display:none}
 </style>
+
+<style id="b1711-fix-css">
+@keyframes b171Swing{0%{transform:rotate(0) scale(1)}35%{transform:rotate(-28deg) scale(1.04)}65%{transform:rotate(22deg) scale(1.04)}100%{transform:rotate(0) scale(1)}}
+@keyframes b171Cast{0%{transform:scale(.7);opacity:.2}45%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:0}}
+.b171-action-anim{animation:b171Swing .42s ease-out}
+.b171-cast-fx{position:fixed;z-index:120;pointer-events:none;border:3px solid #fff;border-radius:50%;width:24px;height:24px;animation:b171Cast .55s ease-out forwards}
+#b171-labelEditor{margin-top:10px;border:1px solid #ffffff22;border-radius:12px;padding:10px}
+#b171-labelEditor select,#b171-labelEditor input{max-width:100%;margin:4px 0}
+.b171-edit-label{outline:2px dashed #fff8!important;cursor:move!important}
+</style>
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -522,6 +532,13 @@ function openSettings(){
   <p><b>Размер зоны движения:</b> <input id="b16Zone" type="range" min="120" max="360" value="${B16.zoneSize}"> <span id="b16ZoneVal">${B16.zoneSize}px</span></p>
   <p><b>Чувствительность камеры:</b> <input id="b16Sens" type="range" min=".4" max="2.5" step=".1" value="${B16.cameraSensitivity}"> <span id="b16SensVal">${B16.cameraSensitivity.toFixed(1)}</span></p>
   <p><b>Размер кнопок:</b> <input id="b16Scale" type="range" min=".7" max="1.5" step=".05" value="${B16.buttonScale}"> <span id="b16ScaleVal">${B16.buttonScale.toFixed(2)}×</span></p>
+  <div id="b171-labelEditor">
+    <b>🖱️ Редактор интерфейса</b><br>
+    <button onclick="b171EditUI('buttons')">Кнопки</button>
+    <button onclick="b171EditUI('labels')">Надписи</button>
+    <button onclick="b171StopEditUI()">Готово</button>
+    <div id="b171-labelControls"></div>
+  </div>
   <p><b>Прозрачность:</b> <input id="b16Opacity" type="range" min=".35" max="1" step=".05" value="${B16.buttonOpacity}"> <span id="b16OpacityVal">${Math.round(B16.buttonOpacity*100)}%</span></p>
   <p><button onclick="b16EditButtons()">🛠️ Переместить кнопки</button>
   <button onclick="b16Reset()">🔄 Сбросить</button></p>
@@ -537,6 +554,42 @@ function openSettings(){
     o.oninput=()=>{B16.buttonOpacity=+o.value;document.getElementById('b16OpacityVal').textContent=Math.round(B16.buttonOpacity*100)+'%';b16Apply()};
   },0);
 }
+
+window.b171UIState=JSON.parse(localStorage.getItem('alexander_rpg_beta17_ui')||'null')||{labels:{}};
+function b171UiKey(e,i){return e.id||('ui:'+i+':'+(e.textContent||'').trim().slice(0,50))}
+function b171GetLabels(){return [...document.querySelectorAll('#b171-xp,#b171-navbtn,#b171-king,#combatLabel,#editHint,#b171-next,#level,#xp,.hud,.label,.gameLabel')].filter(e=>e.offsetParent!==null)}
+function b171ApplyLabels(){
+ document.querySelectorAll('[data-b171-label-key]').forEach((e)=>{
+   const p=window.b171UIState.labels[e.dataset.b171LabelKey]; if(p){e.style.position='fixed';e.style.left=p.x+'px';e.style.top=p.y+'px';e.style.right='auto';e.style.bottom='auto'}
+ });
+}
+function b171EditUI(mode){
+ B16.edit=true;b16Apply();
+ const hint=document.getElementById('editHint'); if(hint)hint.style.display='block';
+ if(mode==='labels'){
+   const labels=b171GetLabels();
+   labels.forEach((e,i)=>{
+     e.dataset.b171LabelKey=b171UiKey(e,i);e.classList.add('b171-edit-label');
+     e.onpointerdown=(ev)=>{
+       e.setPointerCapture(ev.pointerId);
+       const r=e.getBoundingClientRect(),ox=ev.clientX-r.left,oy=ev.clientY-r.top;
+       const move=(q)=>{e.style.position='fixed';e.style.left=(q.clientX-ox)+'px';e.style.top=(q.clientY-oy)+'px'};
+       const up=()=>{e.releasePointerCapture(ev.pointerId);e.onpointermove=null;
+         window.b171UIState.labels[e.dataset.b171LabelKey]={x:parseFloat(e.style.left)||0,y:parseFloat(e.style.top)||0};
+         localStorage.setItem('alexander_rpg_beta17_ui',JSON.stringify(window.b171UIState));};
+       e.onpointermove=move;e.onpointerup=up;
+     };
+   });
+   toast('🖱️ Перетаскивай надписи и отпусти палец');
+ }else{
+   toast('🛠️ Перетаскивай кнопки');
+ }
+}
+window.b171StopEditUI=function(){
+ document.querySelectorAll('.b171-edit-label').forEach(e=>{e.classList.remove('b171-edit-label');e.onpointerdown=null});
+ B16.edit=false;b16Apply();b16Save();
+}
+
 function b16SetMove(v){B16.movement=v;b16Apply();b16Save();toast(v==='zone'?'👆 Свободная зона включена':'🕹️ Джойстик включён')}
 function b16Reset(){B16={...B16_DEFAULT,positions:{}};b16Save();b16Apply();openSettings()}
 function b16SaveAndClose(){b16Save();B16.edit=false;b16Apply();b16Save();closePanel();toast('💾 Управление сохранено')}
@@ -628,6 +681,8 @@ document.addEventListener('touchstart',e=>{
 },{passive:false});
 
 b16Apply();
+b171ApplyLabels();
+setInterval(b171ApplyLabels,1000);
 </script>
 
 
@@ -652,6 +707,9 @@ let B17=JSON.parse(localStorage.getItem(B17_KEY)||'null')||{
   level:0,xp:0,transformed:false,transformEnds:0,dimensionEnds:0
 };
 function b17Save(){localStorage.setItem(B17_KEY,JSON.stringify(B17))}
+/* Beta 17.1.1 progression sync: keep ability unlock level identical to XP HUD. */
+if(window.B171 && Number.isFinite(B171.level)){B17.level=Number(B171.level);B17.xp=Number(B171.xp)||0;}
+
 function b17Toast(t){
   const e=document.getElementById('b17Msg');e.textContent=t;e.style.display='block';
   clearTimeout(window._b17t);window._b17t=setTimeout(()=>e.style.display='none',1700);
@@ -704,14 +762,32 @@ function b17Damage(m,amount){
   if(typeof m.takeDamage==='function')m.takeDamage(amount);
   if(m.hp<=0||m.health<=0)m.dead=true;
 }
+
+function b171AbilityFx(kind){
+ const p=window.player||{x:innerWidth/2,y:innerHeight/2};
+ const x=innerWidth/2, y=innerHeight/2;
+ const e=document.createElement('div');e.className='b171-cast-fx';
+ e.style.left=(x-12)+'px';e.style.top=(y-12)+'px';
+ e.style.width=(kind==='meteor'||kind==='rain'?'70px':'24px');
+ e.style.height=(kind==='meteor'||kind==='rain'?'70px':'24px');
+ document.body.appendChild(e);setTimeout(()=>e.remove(),650);
+ const buttons=[...document.querySelectorAll('#b17Bar button,#buttons button')];
+ const b=buttons.find(q=>/^(1|2|3|4|5|6|7|8)$/.test(q.textContent.trim()));
+ if(b)b.classList.add('b171-action-anim'),setTimeout(()=>b.classList.remove('b171-action-anim'),500);
+}
+
 function b17Rock(){
+  b171AbilityFx('rock');
   const m=b17NearestEnemy(); if(m)b17Damage(m,28);
   b17Toast('🪨 Камень и грязь летят вперёд!');
 }
-function b17Fly(){window.b17Flying=!window.b17Flying;b17Toast(window.b17Flying?'🪽 Полёт включён':'🪽 Полёт выключен')}
-function b17EarthLift(){const m=b17NearestEnemy();if(m){m.y=(m.y||0)-45;b17Damage(m,40)}b17Toast('🌍 Земля поднялась под врагом')}
+function b17Fly(){
+  b171AbilityFx('fly');window.b17Flying=!window.b17Flying;b17Toast(window.b17Flying?'🪽 Полёт включён':'🪽 Полёт выключен')}
+function b17EarthLift(){
+  b171AbilityFx('earth');const m=b17NearestEnemy();if(m){m.y=(m.y||0)-45;b17Damage(m,40)}b17Toast('🌍 Земля поднялась под врагом')}
 let b17HandTarget=null,b17HandX=0,b17HandY=0;
 function b17StoneHand(){
+  b171AbilityFx('hand');
   window.b17HandActive=true;
   document.getElementById('b17HandControls').style.display='flex';
   b17Toast('✋ Каменная рука: время замедлено');
@@ -723,17 +799,21 @@ function b17Throw(){
   b17Damage(b17HandTarget,999999);
   b17HandTarget.dead=true;b17HandTarget=null;b17Toast('💨 Враг отброшен далеко!');
 }
-function b17Meteor(){const m=b17NearestEnemy();if(m){b17Damage(m,90);if(window.mobs)for(const q of window.mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-(m.x||0),(q.y||0)-(m.y||0))<90)b17Damage(q,45)}b17Toast('☄️ Каменный метеорит!')}
+function b17Meteor(){
+  b171AbilityFx('meteor');const m=b17NearestEnemy();if(m){b17Damage(m,90);if(window.mobs)for(const q of window.mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-(m.x||0),(q.y||0)-(m.y||0))<90)b17Damage(q,45)}b17Toast('☄️ Каменный метеорит!')}
 function b17MeteorRain(){
+  b171AbilityFx('rain');
   const end=Date.now()+10000;window.b17RainUntil=end;
   const tick=()=>{if(Date.now()>end)return;const m=b17NearestEnemy();if(m)b17Damage(m,24);setTimeout(tick,450)};tick();
   b17Toast('☄️ Начался метеоритный дождь');
 }
 function b17Transform(){
+  b171AbilityFx('transform');
   if(B17.transformed){B17.transformed=false;B17.transformEnds=0;b17Save();b17Toast('🪨 Трансформация выключена');return}
   B17.transformed=true;B17.transformEnds=Date.now()+300000;b17Save();b17Toast('🪨 Трансформация активна: сила ↑ скорость ↓');
 }
 function b17Dimension(){
+  b171AbilityFx('dimension');
   B17.dimensionEnds=Date.now()+180000;b17Save();
   const end=B17.dimensionEnds;
   const tick=()=>{if(Date.now()>end){b17Toast('🌌 Измерение исчезло');return}
@@ -744,11 +824,7 @@ function b17Dimension(){
 setInterval(()=>{if(B17.transformed&&Date.now()>B17.transformEnds){B17.transformed=false;b17Save();b17Toast('🪨 Трансформация завершилась') }},1000);
 
 /* Simple XP/level bridge; existing XP systems remain untouched if present. */
-window.b17AddXP=function(v){
-  B17.xp+=Math.max(0,v||0);
-  while(B17.xp >= 100 + B17.level*35){B17.xp-=100+B17.level*35;B17.level++}
-  b17Save();
-};
+window.b17AddXP=function(v){ if(typeof window.b171AddXP==='function') window.b171AddXP(v,'legacy'); };
 
 /* Make the new ability bar easy to use without interfering with the tested controls. */
 function b17BuildBar(){
@@ -947,7 +1023,8 @@ setInterval(()=>{
 
 /* First story target: the king, no arrow until a real target exists. */
 window.b171MeetKing=function(){state.kingMet=true;state.target=null;save();toast('👑 Король: новое задание!')};
-hud();updateTargetMarker();updatePickaxe();removeWorld();applySizes();
+if(window.B17){B171.level=Number(B17.level)||0;B171.xp=Number(B17.xp)||0;save();}
+hud();updateTargetMarker();updatePickaxe();removeWorld();applySizes();b171ApplyLabels();
 })();
 </script>
 
