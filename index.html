@@ -491,7 +491,7 @@ hud();
 document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
-
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 </script>
 
 <script>
@@ -1002,50 +1002,41 @@ setInterval(function(){
 </script>
 
 
-
-
-
-<script id="beta171-multitouch-real-fix">
+<script id="beta171-multitouch-safe-fix">
 (function(){
-  const handControls=document.getElementById('b17HandControls');
-  const handStick=document.getElementById('b17HandStick');
-  if(!handControls)return;
+  function install(){
+    const controls=document.getElementById('b17HandControls');
+    if(!controls || controls.dataset.safeMtInstalled)return;
+    controls.dataset.safeMtInstalled='1';
 
-  // Do not alter the game's configured finger-count/maxTouches system.
-  // We only isolate the Stone Hand controls from other active touches.
-  handControls.style.touchAction='none';
-  handControls.style.webkitUserSelect='none';
-  if(handStick)handStick.style.touchAction='none';
+    controls.style.touchAction='none';
+    controls.style.webkitUserSelect='none';
 
-  const buttons=Array.from(handControls.querySelectorAll('button'));
-  const bound=new WeakSet();
+    const buttons=controls.querySelectorAll('button');
+    buttons.forEach(btn=>{
+      btn.style.touchAction='none';
 
-  buttons.forEach(btn=>{
-    if(bound.has(btn))return;
-    bound.add(btn);
+      btn.addEventListener('pointerdown', function(e){
+        if(e.pointerType!=='touch') return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
 
-    // Stop the hand-control touch from bubbling into player/joystick handlers.
-    // pointerdown gives each finger its own pointerId, so a second finger can
-    // press a button without cancelling the first finger's joystick input.
-    btn.addEventListener('pointerdown',function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      if(e.pointerType==='touch' && btn.setPointerCapture){
-        try{btn.setPointerCapture(e.pointerId)}catch(_){}
-      }
+        try { btn.setPointerCapture(e.pointerId); } catch(_){}
 
-      const onclick=btn.getAttribute('onclick')||'';
-      if(onclick.includes('b17Grab')) b17Grab();
-      else if(onclick.includes('b17Throw')) b17Throw();
-    },{passive:false});
+        const action=btn.getAttribute('onclick')||'';
+        if(action.includes('b17Grab')) window.b17Grab && b17Grab();
+        else if(action.includes('b17Throw')) window.b17Throw && b17Throw();
+      }, {passive:false});
+    });
+  }
 
-    // Prevent synthetic click from invoking the action a second time.
-    btn.addEventListener('click',function(e){
-      if(e.detail===0)return;
-      e.preventDefault();
-      e.stopPropagation();
-    },{passive:false});
-  });
+  if(document.readyState==='loading')
+    document.addEventListener('DOMContentLoaded', install, {once:true});
+  else install();
+
+  // If the game creates the controls later, install once they appear.
+  const observer=new MutationObserver(install);
+  observer.observe(document.documentElement,{childList:true,subtree:true});
 })();
 </script>
 
