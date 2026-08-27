@@ -403,6 +403,25 @@ player(); b17AnimDraw();
 function updateQuestUI(){document.getElementById('quest').textContent=questState?'📜 '+(villagers.find(v=>v.id===questState.villager)?.name||'Житель')+': '+questState.q.done+'/'+questState.q.target+' • 🪙 '+questState.q.reward:'👑 Цель: королевский замок'}
 function mobAI(dt){
   mobs.slice().forEach(m=>{
+    // Stone Hand owns the mob while it is held.
+    if(m._b17Held){
+      m.attackT=0;
+      return;
+    }
+    // After release, let the throw travel through the world before normal AI resumes.
+    if(m._b17ThrownUntil && performance.now()<m._b17ThrownUntil){
+      m.x+=m._b17ThrowVX*dt;
+      m.y+=m._b17ThrowVY*dt;
+      m._b17ThrowVX*=Math.pow(0.985,dt*60);
+      m._b17ThrowVY*=Math.pow(0.985,dt*60);
+      m.x=Math.max(20,Math.min(world.w-20,m.x));
+      m.y=Math.max(20,Math.min(world.h-20,m.y));
+      return;
+    }
+    if(m._b17ThrownUntil){
+      m._b17ThrownUntil=0;
+      m._b17ThrowVX=0;m._b17ThrowVY=0;
+    }
     const d=mobDefs[m.type],dx=p.x-m.x,dy=p.y-m.y,dd=Math.hypot(dx,dy);
     m.cd=Math.max(0,m.cd-dt);m.warn=Math.max(0,m.warn-dt);
     if(m.attackT>0){
@@ -719,9 +738,9 @@ function b17AnimDraw(){
 }
 
 function b17NearestEnemy(){
-  if(window.mobs && Array.isArray(window.mobs)){
+  if(mobs && Array.isArray(mobs)){
     let best=null,d=1e9;
-    for(const m of window.mobs){
+    for(const m of mobs){
       if(!m||m.dead)continue;
       const dx=(m.x||0)-p.x,dy=(m.y||0)-p.y,dd=Math.hypot(dx,dy);
       if(dd<d){d=dd;best=m}
@@ -747,13 +766,13 @@ function b17StoneHand(){
   b17HandVX=b17HandVY=0;
   document.getElementById('b17HandControls').style.display='flex';
   b17Toast('✋ Каменная рука активна — управляйте зоной руки');
-  if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)m._b17SlowUntil=Date.now()+300000;
+  if(mobs)for(const m of mobs)if(m&&!m.dead)m._b17SlowUntil=Date.now()+300000;
 }
 const B17_HAND_HITBOX_RADIUS = 92;
 function b17HandNearest(){
   // Explicit hand hitbox: the marked circle around the palm is the grab zone.
   let best=null,bestScore=Infinity;
-  if(window.mobs)for(const m of window.mobs){
+  if(mobs)for(const m of mobs){
     if(!m||m.dead||m._b17Held)continue;
     const dx=(m.x||0)-b17HandX, dy=(m.y||0)-b17HandY;
     const d=Math.hypot(dx,dy);
@@ -772,7 +791,7 @@ function b17Grab(){
 
   // Select the closest living mob inside the visible hand hitbox.
   let target=null, best=Infinity;
-  const list=Array.isArray(window.mobs)?window.mobs:[];
+  const list=Array.isArray(mobs)?mobs:[];
   for(const m of list){
     if(!m || m.dead || m._b17Held) continue;
     const mx=Number(m.x), my=Number(m.y);
@@ -803,15 +822,24 @@ function b17Grab(){
 function b17Throw(){
   if(!b17HandTarget)return b17Toast('Нет схваченного врага');
   const m=b17HandTarget;
+  const power=Math.max(120,Math.hypot(b17HandVX,b17HandVY));
+  const len=Math.hypot(b17HandVX,b17HandVY)||1;
+  const nx=b17HandVX/len, ny=b17HandVY/len;
+
+  // Release the mob with real throw velocity. mobAI temporarily hands
+  // control to this projectile motion instead of immediately steering it back.
   m._b17Held=false;
-  const power=Math.max(1,Math.hypot(b17HandVX,b17HandVY));
-  m.x+=b17HandVX*0.18; m.y+=b17HandVY*0.18;
-  if(power>160)b17Damage(m,999999);
-  else b17Damage(m,Math.min(300,Math.round(80+power)));
+  m._b17GrabbedByStoneHand=false;
+  m._b17ThrownUntil=performance.now()+Math.min(4200,900+power*5);
+  m._b17ThrowVX=nx*power;
+  m._b17ThrowVY=ny*power;
+  m.x=b17HandX;
+  m.y=b17HandY;
   b17HandTarget=null;
-  b17Toast(power>160?'💨 Враг отброшен далеко!':'💨 Враг выброшен!');
+
+  b17Toast('💨 Враг брошен!');
 }
-function b17Meteor(){const m=b17NearestEnemy(); const x=m?.x??p.x,y=m?.y??p.y; b17AnimStart('meteor',1.0,x,y); setTimeout(()=>{if(m){b17Damage(m,90);if(window.mobs)for(const q of window.mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-x,(q.y||0)-y)<110)b17Damage(q,45)}},500); b17Toast('☄️ Каменный метеорит!')}
+function b17Meteor(){const m=b17NearestEnemy(); const x=m?.x??p.x,y=m?.y??p.y; b17AnimStart('meteor',1.0,x,y); setTimeout(()=>{if(m){b17Damage(m,90);if(mobs)for(const q of mobs)if(q!==m&&!q.dead&&Math.hypot((q.x||0)-x,(q.y||0)-y)<110)b17Damage(q,45)}},500); b17Toast('☄️ Каменный метеорит!')}
 function b17MeteorRain(){
   b17AnimStart('rain',1.0,p.x,p.y);
   const end=Date.now()+10000;window.b17RainUntil=end;
@@ -828,7 +856,7 @@ function b17Dimension(){
   B17.dimensionEnds=Date.now()+180000;b17Save();
   const end=B17.dimensionEnds;
   const tick=()=>{if(Date.now()>end){b17Toast('🌌 Измерение исчезло');return}
-    if(window.mobs)for(const m of window.mobs)if(m&&!m.dead)b17Damage(m,32);
+    if(mobs)for(const m of mobs)if(m&&!m.dead)b17Damage(m,32);
     setTimeout(tick,350)
   };tick();b17Toast('🌌 Измерение создано на 3 минуты');
 }
