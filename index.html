@@ -700,7 +700,7 @@ function b17OpenAbilities(){
 }
 function b17CloseAbilities(){document.getElementById('b17Panel').style.display='none'}
 function b17Use(n){
- if(n===8)return window.b17DimensionVerified();
+ if(n===8) return window.alexDimensionMerged();
 
   if(!b17Unlocked(B17_AB[n-1]))return b17Toast('🔒 Недостаточный уровень');
   if(n===8 && !B17.transformed)return b17Toast('🪨 Сначала активируй Трансформацию');
@@ -1004,149 +1004,241 @@ setInterval(function(){
 </script>
 
 
-<script id="b17-dimension-verified">
+<script id="alex-dimension-merged">
 (function(){
-  "use strict";
-  const D={active:false,saved:null,timer:null,raf:null,shots:[],end:0,
-          W:2600,H:1800,CX:1300,CY:900,layer:null,oldClear:null};
-
-  function notice(t){
-    if(typeof window.b17Toast==="function") window.b17Toast(t);
-  }
-  function liveTargets(){
-    if(!Array.isArray(window.mobs)) return [];
-    return window.mobs.filter(m=>{
-      if(!m||m.dead)return false;
-      return Math.hypot((m.x||0)-(window.p.x||0),(m.y||0)-(window.p.y||0))<=350;
-    });
-  }
-  function stopTimers(){
-    if(D.timer)clearInterval(D.timer);
-    if(D.raf)cancelAnimationFrame(D.raf);
-    D.timer=null;D.raf=null;
-  }
-  function leave(){
-    if(!D.active)return;
-    stopTimers();
-    if(D.saved){
-      window.p.x=D.saved.px; window.p.y=D.saved.py;
-      D.saved.forEach(o=>{
-        if(o.m && !o.m.dead){o.m.x=o.x;o.m.y=o.y;}
-        if(o.m){delete o.m._b17Dim;delete o.m._dimX;delete o.m._dimY;}
-      });
-    }
-    D.saved=null;D.shots=[];D.active=false;
-    if(D.layer)D.layer.remove();
-    D.layer=null;
-    notice("Измерение завершено");
-  }
-  function createLayer(){
-    const c=document.createElement("canvas");
-    c.id="b17DimensionCanvas";
-    c.width=window.innerWidth*devicePixelRatio;
-    c.height=window.innerHeight*devicePixelRatio;
-    c.style.cssText="position:fixed;inset:0;width:100vw;height:100vh;z-index:5000;pointer-events:none;";
-    document.body.appendChild(c);
-    D.layer=c;
-    return c;
-  }
-  function shoot(){
-    const live=window.mobs.filter(m=>m&&!m.dead&&m._b17Dim);
-    if(!live.length){leave();return;}
-    for(const m of live) for(let i=0;i<2;i++){
-      const a=Math.random()*Math.PI*2,r=650+Math.random()*180;
-      D.shots.push({sx:m._dimX+Math.cos(a)*r,sy:m._dimY+Math.sin(a)*r*.7,
-        tx:m._dimX,ty:m._dimY,t:0,life:.55+Math.random()*.2,
-        dirt:Math.random()<.5,rot:Math.random()*6.28});
-    }
-  }
-  function draw(){
-    if(!D.active||!D.layer)return;
-    const c=D.layer,ctx=c.getContext("2d"),W=c.width,H=c.height;
-    const sc=Math.min(W/D.W,H/D.H),ox=(W-D.W*sc)/2,oy=(H-D.H*sc)/2;
-    ctx.clearRect(0,0,W,H);
-    ctx.save();ctx.translate(ox,oy);ctx.scale(sc,sc);
-
-    // Rich, separate dimension scene.
-    ctx.fillStyle="#090a08";ctx.fillRect(0,0,D.W,D.H);
-    const grd=ctx.createRadialGradient(D.CX,D.CY,80,D.CX,D.CY,1250);
-    grd.addColorStop(0,"#665f3e");grd.addColorStop(.28,"#27281e");grd.addColorStop(1,"#090a08");
-    ctx.fillStyle=grd;ctx.fillRect(0,0,D.W,D.H);
-
-    for(let i=0;i<120;i++){
-      const x=(i*197)%D.W,y=(i*331)%D.H,s=12+(i%8)*8;
-      ctx.fillStyle=i%3?"#494536":"#655a43";
-      ctx.beginPath();ctx.moveTo(x-s,y+4);ctx.lineTo(x-3,y-s);
-      ctx.lineTo(x+s,y-5);ctx.lineTo(x+s*.4,y+s);ctx.closePath();ctx.fill();
-    }
-    for(let i=0;i<42;i++){
-      const a=i*2.399963+performance.now()/9000,r=240+(i*79)%850;
-      const x=D.CX+Math.cos(a)*r,y=D.CY+Math.sin(a)*r*.55;
-      ctx.fillStyle="#77705b";ctx.strokeStyle="#b4aa8d";ctx.lineWidth=4;
-      ctx.beginPath();ctx.moveTo(x-30,y+10);ctx.lineTo(x-10,y-32);
-      ctx.lineTo(x+31,y-14);ctx.lineTo(x+14,y+27);ctx.closePath();ctx.fill();ctx.stroke();
-    }
-    ctx.strokeStyle="#e2d6a4";ctx.lineWidth=14;ctx.setLineDash([42,20]);
-    ctx.strokeRect(75,75,D.W-150,D.H-150);ctx.setLineDash([]);
-
-    // Local participant rendering.
-    window.mobs.filter(m=>m&&!m.dead&&m._b17Dim).forEach(m=>{
-      ctx.fillStyle="#a7a08c";ctx.strokeStyle="#f1e5bc";ctx.lineWidth=5;
-      ctx.beginPath();ctx.arc(m._dimX,m._dimY,34,0,Math.PI*2);ctx.fill();ctx.stroke();
-    });
-    ctx.fillStyle="#d7c999";ctx.strokeStyle="#fff2ba";ctx.lineWidth=6;
-    ctx.beginPath();ctx.arc(D.CX,D.CY,44,0,Math.PI*2);ctx.fill();ctx.stroke();
-
-    for(const q of D.shots){
-      q.t=Math.min(q.life,q.t+.016);const u=q.t/q.life;
-      const x=q.sx+(q.tx-q.sx)*u,y=q.sy+(q.ty-q.sy)*u;
-      ctx.save();ctx.translate(x,y);ctx.rotate(q.rot+u*11);
-      ctx.fillStyle=q.dirt?"#7b5d40":"#8b887c";ctx.strokeStyle="#c6bea8";ctx.lineWidth=3;
-      ctx.beginPath();ctx.moveTo(-24,10);ctx.lineTo(-9,-25);ctx.lineTo(22,-15);
-      ctx.lineTo(26,8);ctx.lineTo(3,25);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
-    }
-    D.shots=D.shots.filter(q=>q.t<q.life);
-
-    ctx.fillStyle="#eee3c2";ctx.textAlign="center";ctx.font="bold 28px sans-serif";
-    ctx.fillText("ИЗМЕРЕНИЕ",D.CX,42);ctx.font="bold 14px sans-serif";
-    ctx.fillText("КАМЕНЬ • ЗЕМЛЯ • БЕЗГРАНИЧНОЕ ПРОСТРАНСТВО",D.CX,66);
-    ctx.restore();
-    D.raf=requestAnimationFrame(draw);
-  }
-
-  window.b17DimensionVerified=function(){
-    if(D.active){leave();return;}
-    if(typeof window.B17!=="undefined" && !window.B17.transformed){
-      notice('для использования способности "измерение" вам нужно включить трансформацию');return;
-    }
-    const list=liveTargets();
-    D.saved=list.map(m=>({m:m,x:m.x,y:m.y}));
-    D.saved.forEach((o,i)=>{
-      const a=i*2.399963,r=190+(i%7)*95;
-      o.m._dimX=D.CX+Math.cos(a)*r;
-      o.m._dimY=D.CY+Math.sin(a)*r*.68;
-      o.m._b17Dim=true;
-    });
-    D.active=true;D.end=Date.now()+180000;
-    createLayer();
-    D.timer=setInterval(()=>{
-      if(!D.active)return;
-      if(!window.mobs.some(m=>m&&!m.dead&&m._b17Dim)){leave();return;}
-      shoot();
-      if(Date.now()>=D.end)leave();
-    },1000);
-    notice("ИЗМЕРЕНИЕ ОТКРЫТО");
-    draw();
+  // Completely isolated namespace. No touch listeners, movement handlers,
+  // draw/update functions, or existing ability implementations are replaced.
+  const DIM = {
+    active:false,
+    saved:null,
+    timer:null,
+    raf:null,
+    particles:[],
+    startedAt:0,
+    duration:180000,
+    W:2600,
+    H:1800,
+    CX:1300,
+    CY:900
   };
 
-  // Route only ability 8. No touch/pointer listeners are added or replaced.
-  const old=window.b17Use;
-  if(typeof old==="function"){
-    window.b17Use=function(n){
-      if(n===8)return window.b17DimensionVerified();
-      return old.apply(this,arguments);
-    };
+  function notify(text){
+    if(typeof b17Toast === "function") b17Toast(text);
   }
+
+  function getNearbyEnemies(){
+    if(!Array.isArray(window.mobs)) return [];
+    return mobs.filter(m=>{
+      if(!m || m.dead) return false;
+      return Math.hypot((m.x||0)-(p.x||0),(m.y||0)-(p.y||0)) <= 350;
+    });
+  }
+
+  function close(){
+    if(!DIM.active) return;
+    if(DIM.timer) clearInterval(DIM.timer);
+    if(DIM.raf) cancelAnimationFrame(DIM.raf);
+    DIM.timer=null;
+    DIM.raf=null;
+
+    if(DIM.saved){
+      p.x=DIM.saved.px;
+      p.y=DIM.saved.py;
+      DIM.saved.enemies.forEach(e=>{
+        if(e.m && !e.m.dead){
+          e.m.x=e.x;
+          e.m.y=e.y;
+        }
+        if(e.m){
+          delete e.m._alexDimension;
+          delete e.m._alexDimX;
+          delete e.m._alexDimY;
+        }
+      });
+    }
+
+    DIM.particles=[];
+    DIM.saved=null;
+    DIM.active=false;
+    notify("Измерение завершено");
+  }
+
+  function makeParticles(){
+    DIM.particles=[];
+    const count=170;
+    for(let i=0;i<count;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=180+Math.random()*700;
+      DIM.particles.push({
+        a:a,
+        r:r,
+        speed:.35+Math.random()*1.1,
+        size:2+Math.random()*5,
+        phase:Math.random()*Math.PI*2
+      });
+    }
+  }
+
+  function createLocalPositions(enemies){
+    enemies.forEach((m,i)=>{
+      const a=i*2.399963;
+      const r=170+(i%7)*95;
+      m._alexDimension=true;
+      m._alexDimX=DIM.CX+Math.cos(a)*r;
+      m._alexDimY=DIM.CY+Math.sin(a)*r*.72;
+    });
+  }
+
+  function enter(){
+    if(DIM.active){
+      close();
+      return;
+    }
+
+    if(typeof B17 !== "undefined" && !B17.transformed){
+      notify('для использования способности "измерение" вам нужно включить трансформацию');
+      return;
+    }
+
+    const enemies=getNearbyEnemies();
+
+    DIM.saved={
+      px:p.x,
+      py:p.y,
+      enemies:enemies.map(m=>({m:m,x:m.x,y:m.y}))
+    };
+
+    // The normal-world coordinates are NOT changed on entry.
+    // The dimension has its own coordinate system.
+    createLocalPositions(enemies);
+    makeParticles();
+
+    DIM.active=true;
+    DIM.startedAt=Date.now();
+
+    DIM.timer=setInterval(()=>{
+      if(!DIM.active) return;
+
+      const live=mobs.filter(m=>m && !m.dead && m._alexDimension);
+      if(!live.length){
+        close();
+        return;
+      }
+
+      // Visual debris preparation comes later; this timer intentionally only
+      // maintains the dimension state so the visual scene can be tested safely.
+      if(Date.now()-DIM.startedAt >= DIM.duration) close();
+    },1000);
+
+    notify("ИЗМЕРЕНИЕ ОТКРЫТО");
+    render();
+  }
+
+  function render(){
+    if(!DIM.active || !window.ctx || !window.canvas) return;
+
+    const cw=canvas.width, ch=canvas.height;
+    ctx.save();
+
+    // Draw only in the existing game canvas; the DOM/UI and its touch handling
+    // are not covered or replaced.
+    ctx.clearRect(0,0,cw,ch);
+
+    const scale=Math.min(cw/DIM.W,ch/DIM.H);
+    const ox=(cw-DIM.W*scale)/2;
+    const oy=(ch-DIM.H*scale)/2;
+
+    ctx.translate(ox,oy);
+    ctx.scale(scale,scale);
+
+    // Base visual inspired by the dimension effect from the latest build.
+    const grad=ctx.createRadialGradient(DIM.CX,DIM.CY,50,DIM.CX,DIM.CY,1100);
+    grad.addColorStop(0,"#c5b878");
+    grad.addColorStop(.18,"#4d4939");
+    grad.addColorStop(.58,"#1b1d17");
+    grad.addColorStop(1,"#090a08");
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,0,DIM.W,DIM.H);
+
+    // Pixel/particle field: rotates around the central circle and gradually
+    // spirals inward.
+    const t=performance.now()/1000;
+    for(const q of DIM.particles){
+      q.a += q.speed*.006;
+      q.r -= .22;
+      if(q.r<75){
+        q.r=620+Math.random()*420;
+        q.a=Math.random()*Math.PI*2;
+      }
+
+      const pull=Math.max(0,1-(q.r/1050));
+      const x=DIM.CX+Math.cos(q.a+t*q.speed*.18)*q.r;
+      const y=DIM.CY+Math.sin(q.a+t*q.speed*.18)*q.r*.70;
+      const s=q.size*(.65+pull*1.4);
+
+      ctx.fillStyle = pull>.72 ? "#d8cf9a" : "#77705a";
+      ctx.fillRect(Math.round(x),Math.round(y),Math.ceil(s),Math.ceil(s));
+    }
+
+    // Central vortex.
+    for(let i=7;i>=1;i--){
+      ctx.beginPath();
+      ctx.arc(DIM.CX,DIM.CY,42+i*18,0,Math.PI*2);
+      ctx.strokeStyle=i%2 ? "#9d936b" : "#ded29a";
+      ctx.globalAlpha=.08+i*.025;
+      ctx.lineWidth=12;
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+
+    const core=ctx.createRadialGradient(DIM.CX,DIM.CY,2,DIM.CX,DIM.CY,95);
+    core.addColorStop(0,"#050505");
+    core.addColorStop(.55,"#17170f");
+    core.addColorStop(1,"rgba(196,184,120,.04)");
+    ctx.fillStyle=core;
+    ctx.beginPath();
+    ctx.arc(DIM.CX,DIM.CY,100,0,Math.PI*2);
+    ctx.fill();
+
+    // Dimension-local enemies.
+    const live=mobs.filter(m=>m && !m.dead && m._alexDimension);
+    for(const m of live){
+      ctx.fillStyle="#aaa58e";
+      ctx.strokeStyle="#eee4bc";
+      ctx.lineWidth=5;
+      ctx.beginPath();
+      ctx.arc(m._alexDimX,m._alexDimY,30,0,Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Alexander marker at the center.
+    ctx.fillStyle="#d6c99a";
+    ctx.strokeStyle="#fff0b8";
+    ctx.lineWidth=6;
+    ctx.beginPath();
+    ctx.arc(DIM.CX,DIM.CY,38,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Subtle outer boundary.
+    ctx.strokeStyle="#bcb184";
+    ctx.lineWidth=9;
+    ctx.setLineDash([30,18]);
+    ctx.strokeRect(55,55,DIM.W-110,DIM.H-110);
+    ctx.setLineDash([]);
+
+    ctx.fillStyle="#eee6c8";
+    ctx.textAlign="center";
+    ctx.font="bold 26px sans-serif";
+    ctx.fillText("ИЗМЕРЕНИЕ",DIM.CX,38);
+
+    ctx.restore();
+
+    DIM.raf=requestAnimationFrame(render);
+  }
+
+  window.alexDimensionMerged=enter;
 })();
 </script>
 
