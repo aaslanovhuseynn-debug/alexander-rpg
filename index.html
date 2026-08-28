@@ -1002,41 +1002,31 @@ setInterval(function(){
 </script>
 
 
-<script id="beta171-multitouch-safe-fix">
+<script id="beta171-multitouch-throw-now">
 (function(){
   function install(){
-    const controls=document.getElementById('b17HandControls');
-    if(!controls || controls.dataset.safeMtInstalled)return;
-    controls.dataset.safeMtInstalled='1';
+    var c=document.getElementById('b17HandControls');
+    if(!c || c.dataset.mtFix==='1') return;
+    c.dataset.mtFix='1';
+    c.style.touchAction='none';
 
-    controls.style.touchAction='none';
-    controls.style.webkitUserSelect='none';
-
-    const buttons=controls.querySelectorAll('button');
-    buttons.forEach(btn=>{
-      btn.style.touchAction='none';
-
-      btn.addEventListener('pointerdown', function(e){
+    c.querySelectorAll('button').forEach(function(b){
+      b.style.touchAction='none';
+      b.addEventListener('pointerdown',function(e){
         if(e.pointerType!=='touch') return;
         e.preventDefault();
-        e.stopImmediatePropagation();
-
-        try { btn.setPointerCapture(e.pointerId); } catch(_){}
-
-        const action=btn.getAttribute('onclick')||'';
-        if(action.includes('b17Grab')) window.b17Grab && b17Grab();
-        else if(action.includes('b17Throw')) window.b17Throw && b17Throw();
-      }, {passive:false});
+        e.stopPropagation();
+        try{ b.setPointerCapture(e.pointerId); }catch(_){}
+        var a=b.getAttribute('onclick')||'';
+        if(a.indexOf('b17Grab')>=0 && typeof b17Grab==='function') b17Grab();
+        if(a.indexOf('b17Throw')>=0 && typeof b17Throw==='function') b17Throw();
+      },{passive:false});
     });
   }
-
   if(document.readyState==='loading')
-    document.addEventListener('DOMContentLoaded', install, {once:true});
+    document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
-
-  // If the game creates the controls later, install once they appear.
-  const observer=new MutationObserver(install);
-  observer.observe(document.documentElement,{childList:true,subtree:true});
+  new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});
 })();
 </script>
 
