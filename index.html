@@ -700,7 +700,8 @@ function b17OpenAbilities(){
 }
 function b17CloseAbilities(){document.getElementById('b17Panel').style.display='none'}
 function b17Use(n){
- if(n===8){ if(typeof b17SafeDimension==='function') return b17SafeDimension(); }
+ if(n===8){ return window.b17SafeDimensionV2(); }
+
   if(!b17Unlocked(B17_AB[n-1]))return b17Toast('🔒 Недостаточный уровень');
   if(n===8 && !B17.transformed)return b17Toast('🪨 Сначала активируй Трансформацию');
   if(n===1)b17Rock();
@@ -1003,158 +1004,188 @@ setInterval(function(){
 </script>
 
 
-<script id="b17-safe-dimension">
+<script id="b17-safe-dimension-v2">
 (function(){
-  const S = {
-    active:false, saved:null, timer:null, fxTimer:null, projectiles:[],
-    originX:0, originY:0
-  };
+  const D={active:false,saved:null,end:0,shots:[],timer:null,anim:null};
 
-  function toast(msg){
-    if(typeof b17Toast==="function") b17Toast(msg);
-    else {
-      const d=document.createElement("div");
-      d.textContent=msg;
-      d.style.cssText="position:fixed;left:50%;top:15%;transform:translateX(-50%);padding:10px 16px;background:#18170f;color:#eee;border:1px solid #aaa;border-radius:8px;z-index:99999;font:600 14px sans-serif";
-      document.body.appendChild(d); setTimeout(()=>d.remove(),2600);
-    }
+  function say(t){
+    if(typeof b17Toast==="function") b17Toast(t);
+    else alert(t);
   }
 
-  function aliveNearby(){
-    if(!Array.isArray(window.mobs)) return [];
-    return mobs.filter(m=>m && !m.dead && Math.hypot((m.x||0)-p.x,(m.y||0)-p.y)<=350);
+  function stop(){
+    if(D.timer) clearInterval(D.timer);
+    if(D.anim) cancelAnimationFrame(D.anim);
+    D.timer=D.anim=null;
   }
 
   function restore(){
-    if(!S.active) return;
-    clearInterval(S.timer); clearInterval(S.fxTimer);
-    S.timer=S.fxTimer=null;
-    if(S.saved){
-      p.x=S.saved.px; p.y=S.saved.py;
-      S.saved.mobs.forEach(o=>{
-        if(o.m){ o.x=o.x0; o.y=o.y0; delete o._b17Dimension; }
+    if(!D.active)return;
+    stop();
+    if(D.saved){
+      p.x=D.saved.px; p.y=D.saved.py;
+      D.saved.mobs.forEach(o=>{
+        if(o.m && !o.m.dead){
+          o.m.x=o.x; o.m.y=o.y;
+        }
+        if(o.m) delete o.m._b17Dimension;
       });
     }
-    S.projectiles=[]; S.saved=null; S.active=false;
-    toast("🌍 Измерение завершено");
+    D.shots=[];D.saved=null;D.active=false;
+    say("🌍 Измерение завершено");
   }
 
-  function spawnFX(){
-    if(!S.active) return;
-    const targets=mobs.filter(m=>m&&!m.dead&&m._b17Dimension);
-    for(const m of targets){
-      for(let n=0;n<2;n++){
-        const a=Math.random()*Math.PI*2, r=620+Math.random()*180;
-        S.projectiles.push({
-          x0:m.x+Math.cos(a)*r,y0:m.y+Math.sin(a)*r*.7,
-          x1:m.x,y1:m.y,t:0,life:.5+Math.random()*.25,
-          dirt:Math.random()<.5,rot:Math.random()*6.28
-        });
-      }
-    }
+  function targets(){
+    if(!Array.isArray(mobs))return [];
+    return mobs.filter(m=>{
+      if(!m||m.dead)return false;
+      const dx=(m.x||0)-(p.x||0),dy=(m.y||0)-(p.y||0);
+      return Math.sqrt(dx*dx+dy*dy)<=350;
+    });
   }
 
-  function tick(){
-    if(!S.active) return;
-    const targets=mobs.filter(m=>m&&!m.dead&&m._b17Dimension);
-    if(!targets.length){ restore(); return; }
-    if(Date.now()>=S.ends){ restore(); return; }
-  }
-
-  // A canvas overlay follows the player camera, but does not replace draw().
-  function drawOverlay(){
-    if(!S.active || !window.ctx) return;
-    requestAnimationFrame(drawOverlay);
-    try{
-      const W=canvas.width||innerWidth, H=canvas.height||innerHeight;
-      ctx.save();
-      ctx.fillStyle="rgba(8,9,7,.93)";
-      ctx.fillRect(0,0,W,H);
-
-      const cx=W/2, cy=H/2;
-      // Rich layered dimension environment.
-      for(let i=0;i<9;i++){
-        ctx.strokeStyle=i%2?"#514c3b":"#716a51";
-        ctx.lineWidth=32;
-        ctx.globalAlpha=.55;
-        ctx.beginPath();
-        ctx.ellipse(cx,cy,Math.max(140,W*.58-i*24),Math.max(100,H*.48-i*20),0,0,Math.PI*2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha=1;
-
-      // Ground stones/cracks.
-      for(let i=0;i<65;i++){
-        const a=i*2.399963, r=40+(i*83)%Math.min(W*.48,H*.42);
-        const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r*.68;
-        ctx.fillStyle=i%3?"#454033":"#5a513e";
-        ctx.beginPath();
-        ctx.moveTo(x-13,y+5);ctx.lineTo(x-3,y-12);ctx.lineTo(x+14,y-4);
-        ctx.lineTo(x+6,y+11);ctx.closePath();ctx.fill();
-      }
-
-      ctx.strokeStyle="#d3c99c";ctx.lineWidth=6;ctx.setLineDash([20,12]);
-      ctx.strokeRect(cx-Math.min(W*.43,700),cy-Math.min(H*.37,430),
-                     Math.min(W*.86,1400),Math.min(H*.74,860));
-      ctx.setLineDash([]);
-
-      // Projectile animation.
-      const now=performance.now();
-      S.projectiles.forEach(q=>{
-        q.t=Math.min(q.life,q.t+.016);
-        const u=q.t/q.life, x=q.x0+(q.x1-q.x0)*u, y=q.y0+(q.y1-q.y0)*u;
-        ctx.save();ctx.translate(x-cx+W/2,y-cy+H/2);ctx.rotate(q.rot+u*8);
-        ctx.fillStyle=q.dirt?"#765d43":"#858278";
-        ctx.beginPath();ctx.moveTo(-12,6);ctx.lineTo(-5,-12);ctx.lineTo(10,-8);ctx.lineTo(14,5);ctx.lineTo(2,13);ctx.closePath();ctx.fill();
-        ctx.restore();
-      });
-      S.projectiles=S.projectiles.filter(q=>q.t<q.life);
-
-      ctx.fillStyle="#e4dcc2";ctx.font="bold 18px sans-serif";ctx.textAlign="center";
-      ctx.fillText("ИЗМЕРЕНИЕ",W/2,28);
-      ctx.font="bold 12px sans-serif";
-      ctx.fillText("КАМЕНЬ • ЗЕМЛЯ • ИЗМЕРЕНИЕ",W/2,48);
-      ctx.restore();
-    }catch(e){}
-  }
-
-  window.b17SafeDimension=function(){
-    if(S.active){ restore(); return; }
+  function open(){
+    if(D.active){restore();return;}
 
     if(typeof B17!=="undefined" && !B17.transformed){
-      toast('для использования способности "измерение" вам нужно включить трансформацию');
+      say('для использования способности "измерение" вам нужно включить трансформацию');
       return;
     }
 
-    const targets=aliveNearby();
-    S.saved={px:p.x,py:p.y,mobs:targets.map(m=>({m,x0:m.x,y0:m.y}))};
+    const list=targets();
+    D.saved={
+      px:p.x,py:p.y,
+      mobs:list.map(m=>({m:m,x:m.x,y:m.y}))
+    };
 
-    // Use a coordinate pocket far from the normal playable map.
-    const bx=100000, by=100000;
-    p.x=bx; p.y=by;
-    targets.forEach((m,i)=>{
-      const a=i*2.399963, r=130+(i%6)*70;
+    // IMPORTANT: this coordinate pocket is far outside the normal map,
+    // but still compatible with the game's camera/position arithmetic.
+    const bx=20000,by=20000;
+    p.x=bx;p.y=by;
+
+    list.forEach((m,i)=>{
+      const a=i*2.399963;
+      const r=130+(i%6)*65;
       m.x=bx+Math.cos(a)*r;
-      m.y=by+Math.sin(a)*r*.7;
+      m.y=by+Math.sin(a)*r*.72;
       m._b17Dimension=true;
     });
 
-    // Verify every participant was moved before starting the attack.
-    if(!targets.every(m=>m._b17Dimension && Math.hypot(m.x-p.x,m.y-p.y)<=900)){
-      restore(); toast("Не удалось открыть измерение");
+    // Verify the actual game objects moved.
+    const ok=Math.abs(p.x-bx)<1 && list.every(m=>
+      m._b17Dimension &&
+      Math.hypot(m.x-p.x,m.y-p.y)<=850
+    );
+
+    if(!ok){
+      // restore silently, because a partial teleport must never remain.
+      const saved=D.saved;
+      p.x=saved.px;p.y=saved.py;
+      saved.mobs.forEach(o=>{o.m.x=o.x;o.m.y=o.y;});
+      D.saved=null;
+      say("Не удалось полностью переместить участников в измерение");
       return;
     }
 
-    S.active=true; S.ends=Date.now()+180000;
-    S.timer=setInterval(tick,1000);
-    S.fxTimer=setInterval(spawnFX,1000);
-    spawnFX();
-    toast("🌌 ИЗМЕРЕНИЕ ОТКРЫТО");
-    drawOverlay();
-  };
+    D.active=true;
+    D.end=Date.now()+180000;
+    D.timer=setInterval(()=>{
+      if(!D.active)return;
 
-  // Expose state so the existing ability system can call it.
-  window.b17DimensionSafeState=S;
+      // Spawn exactly two incoming projectiles per living enemy each second.
+      const live=mobs.filter(m=>m&&!m.dead&&m._b17Dimension);
+      if(!live.length){restore();return;}
+
+      for(const m of live){
+        for(let k=0;k<2;k++){
+          const a=Math.random()*Math.PI*2;
+          const r=650+Math.random()*220;
+          D.shots.push({
+            sx:m.x+Math.cos(a)*r,
+            sy:m.y+Math.sin(a)*r*.72,
+            tx:m.x,ty:m.y,t:0,life:.48+Math.random()*.18,
+            kind:Math.random()<.5?"stone":"dirt",
+            rot:Math.random()*6.28
+          });
+        }
+      }
+      if(Date.now()>=D.end)restore();
+    },1000);
+
+    say("🌌 ИЗМЕРЕНИЕ ОТКРЫТО");
+    drawDimension();
+  }
+
+  function drawDimension(){
+    if(!D.active||!window.ctx){return;}
+    const W=canvas.width||innerWidth,H=canvas.height||innerHeight;
+    ctx.save();
+    ctx.fillStyle="#10110d";ctx.fillRect(0,0,W,H);
+
+    const cx=W/2,cy=H/2;
+
+    // Detailed isolated environment.
+    for(let i=0;i<8;i++){
+      ctx.strokeStyle=i%2?"#514b3a":"#70664d";
+      ctx.lineWidth=34;ctx.globalAlpha=.72-i*.06;
+      ctx.beginPath();
+      ctx.ellipse(cx,cy,Math.max(160,W*.58-i*25),Math.max(110,H*.46-i*20),0,0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+
+    for(let i=0;i<75;i++){
+      const a=i*2.399963,r=35+(i*97)%Math.min(W*.47,H*.40);
+      const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r*.68,s=10+(i%6)*3;
+      ctx.fillStyle=i%3?"#403b30":"#5b513e";
+      ctx.beginPath();
+      ctx.moveTo(x-s,y+s*.3);ctx.lineTo(x-s*.2,y-s);
+      ctx.lineTo(x+s,y-s*.25);ctx.lineTo(x+s*.45,y+s);
+      ctx.closePath();ctx.fill();
+    }
+
+    ctx.strokeStyle="#d4ca9b";ctx.lineWidth=7;ctx.setLineDash([22,12]);
+    ctx.strokeRect(cx-Math.min(W*.44,720),cy-Math.min(H*.38,440),
+                   Math.min(W*.88,1440),Math.min(H*.76,880));
+    ctx.setLineDash([]);
+
+    // Render participants at their actual dimension-relative coordinates.
+    const scale=Math.min(W/1500,H/1000);
+    function sx(x){return cx+(x-p.x)*scale}
+    function sy(y){return cy+(y-p.y)*scale}
+
+    mobs.filter(m=>m&&!m.dead&&m._b17Dimension).forEach(m=>{
+      const x=sx(m.x),y=sy(m.y);
+      ctx.fillStyle="#9b9a90";ctx.strokeStyle="#ded8c0";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(x,y,Math.max(10,18*scale),0,Math.PI*2);ctx.fill();ctx.stroke();
+    });
+
+    // Alexander marker.
+    ctx.fillStyle="#c8c09d";ctx.strokeStyle="#fff2bd";
+    ctx.beginPath();ctx.arc(cx,cy,Math.max(12,22*scale),0,Math.PI*2);ctx.fill();ctx.stroke();
+
+    const now=performance.now();
+    for(const q of D.shots){
+      q.t=Math.min(q.life,q.t+.016);
+      const u=q.t/q.life,x=q.sx+(q.tx-q.sx)*u,y=q.sy+(q.ty-q.sy)*u;
+      ctx.save();ctx.translate(sx(x),sy(y));ctx.rotate(q.rot+u*9);
+      ctx.fillStyle=q.kind==="dirt"?"#765d43":"#88867c";
+      ctx.beginPath();ctx.moveTo(-12,5);ctx.lineTo(-5,-12);ctx.lineTo(10,-8);
+      ctx.lineTo(14,5);ctx.lineTo(2,13);ctx.closePath();ctx.fill();
+      ctx.restore();
+    }
+    D.shots=D.shots.filter(q=>q.t<q.life);
+
+    ctx.fillStyle="#e7dfc3";ctx.textAlign="center";
+    ctx.font="bold 19px sans-serif";ctx.fillText("ИЗМЕРЕНИЕ",cx,28);
+    ctx.font="bold 12px sans-serif";
+    ctx.fillText("КАМЕНЬ • ЗЕМЛЯ • ИЗМЕРЕНИЕ",cx,48);
+    ctx.restore();
+
+    D.anim=requestAnimationFrame(drawDimension);
+  }
+
+  window.b17SafeDimensionV2=open;
 })();
 </script>
 
