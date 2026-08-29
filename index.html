@@ -491,7 +491,7 @@ hud();
 document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
-/* Multitouch fix: removed global >1-finger touchmove cancellation. */
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 </script>
 
 <script>
@@ -648,9 +648,7 @@ mz.addEventListener('touchend',e=>{
 },{passive:true});
 
 /* Clamp accepted touches globally to the selected limit without blocking page rendering. */
-document.addEventListener('touchstart',e=>{
-  if(e.touches.length>b16MaxTouch())e.preventDefault();
-},{passive:false});
+/* BETA16 multitouch: global first/second-touch cancellation removed. */
 
 b16Apply();
 </script>
