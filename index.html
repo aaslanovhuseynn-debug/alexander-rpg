@@ -493,6 +493,41 @@ document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false})
 document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
 </script>
 
+<script id="standard-touch-events-multitouch">
+const activeTouches = new Map();
+window.activeTouches = activeTouches;
+
+document.addEventListener("touchstart", e => {
+  for (const touch of e.changedTouches) {
+    activeTouches.set(touch.identifier, {
+      x: touch.clientX,
+      y: touch.clientY
+    });
+  }
+}, {passive:true});
+
+document.addEventListener("touchmove", e => {
+  for (const touch of e.changedTouches) {
+    const finger = activeTouches.get(touch.identifier);
+    if (!finger) continue;
+    finger.x = touch.clientX;
+    finger.y = touch.clientY;
+  }
+}, {passive:true});
+
+document.addEventListener("touchend", e => {
+  for (const touch of e.changedTouches) {
+    activeTouches.delete(touch.identifier);
+  }
+}, {passive:true});
+
+document.addEventListener("touchcancel", e => {
+  for (const touch of e.changedTouches) {
+    activeTouches.delete(touch.identifier);
+  }
+}, {passive:true});
+</script>
+
 <script>
 /* =========================
    BETA 17 — BUTTON POSITION SAVE FIX
@@ -511,7 +546,7 @@ const B16_DEFAULT={
 };
 let B16={...B16_DEFAULT,...JSON.parse(localStorage.getItem(B16_KEY)||'{}')};
 B16.positions={...B16_DEFAULT.positions,...(B16.positions||{})};
-let b16Active=window.activeTouches || (window.activeTouches=new Map()),b16Look={id:null,lastX:0,lastY:0,x:0,y:0};
+let b16Active=window.activeTouches,b16Look={id:null,lastX:0,lastY:0,x:0,y:0};
 let b16LookX=0,b16LookY=0;
 
 function b16Save(){localStorage.setItem(B16_KEY,JSON.stringify(B16))}
@@ -650,41 +685,6 @@ mz.addEventListener('touchend',e=>{
 
 b16Apply();
 
-</script>
-
-<script id="standard-touch-events-multitouch">
-const activeTouches = window.activeTouches || new Map();
-window.activeTouches = activeTouches;
-
-document.addEventListener("touchstart", e => {
-  for (const touch of e.changedTouches) {
-    activeTouches.set(touch.identifier, {
-      x: touch.clientX,
-      y: touch.clientY
-    });
-  }
-}, {passive:true});
-
-document.addEventListener("touchmove", e => {
-  for (const touch of e.changedTouches) {
-    const finger = activeTouches.get(touch.identifier);
-    if (!finger) continue;
-    finger.x = touch.clientX;
-    finger.y = touch.clientY;
-  }
-}, {passive:true});
-
-document.addEventListener("touchend", e => {
-  for (const touch of e.changedTouches) {
-    activeTouches.delete(touch.identifier);
-  }
-}, {passive:true});
-
-document.addEventListener("touchcancel", e => {
-  for (const touch of e.changedTouches) {
-    activeTouches.delete(touch.identifier);
-  }
-}, {passive:true});
 </script>
 
 <div id="b17Msg"></div>
