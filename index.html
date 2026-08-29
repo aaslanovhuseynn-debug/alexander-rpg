@@ -1131,7 +1131,7 @@ setInterval(function(){
     },1000);
 
     notify("ИЗМЕРЕНИЕ ОТКРЫТО");
-    render();
+    /* display renderer disabled for green-screen diagnosis */
   }
 
   function render(){
@@ -1142,7 +1142,7 @@ setInterval(function(){
 
     // Draw only in the existing game canvas; the DOM/UI and its touch handling
     // are not covered or replaced.
-    ctx.clearRect(0,0,cw,ch);
+    /* DISPLAY FIX: do not clear/take over the main game canvas here. */
 
     const scale=Math.min(cw/DIM.W,ch/DIM.H);
     const ox=(cw-DIM.W*scale)/2;
