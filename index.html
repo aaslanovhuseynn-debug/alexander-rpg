@@ -493,198 +493,32 @@ document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false})
 document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
 </script>
 
-<script id="standard-touch-events-multitouch">
-const activeTouches = new Map();
-window.activeTouches = activeTouches;
+<script id="modern-pointer-multitouch">
+const fingers = new Map();
+const canvas = document.querySelector("canvas");
 
-document.addEventListener("touchstart", e => {
-  for (const touch of e.changedTouches) {
-    activeTouches.set(touch.identifier, {
-      x: touch.clientX,
-      y: touch.clientY
+canvas.addEventListener("pointerdown", e => {
+    fingers.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY
     });
-  }
-}, {passive:true});
-
-document.addEventListener("touchmove", e => {
-  for (const touch of e.changedTouches) {
-    const finger = activeTouches.get(touch.identifier);
-    if (!finger) continue;
-    finger.x = touch.clientX;
-    finger.y = touch.clientY;
-  }
-}, {passive:true});
-
-document.addEventListener("touchend", e => {
-  for (const touch of e.changedTouches) {
-    activeTouches.delete(touch.identifier);
-  }
-}, {passive:true});
-
-document.addEventListener("touchcancel", e => {
-  for (const touch of e.changedTouches) {
-    activeTouches.delete(touch.identifier);
-  }
-}, {passive:true});
-</script>
-
-<script>
-/* =========================
-   BETA 17 — BUTTON POSITION SAVE FIX
-   BETA 16 — SETTINGS / MULTI-TOUCH
-   ========================= */
-const B16_KEY='alexander_rpg_beta16_controls';
-const B16_DEFAULT={
-  movement:'joystick',
-  zoneSize:190,
-  cameraSensitivity:1,
-  maxTouches:2,
-  buttonScale:1,
-  buttonOpacity:.88,
-  edit:false,
-  positions:{}
-};
-let B16={...B16_DEFAULT,...JSON.parse(localStorage.getItem(B16_KEY)||'{}')};
-B16.positions={...B16_DEFAULT.positions,...(B16.positions||{})};
-let b16Active=window.activeTouches,b16Look={id:null,lastX:0,lastY:0,x:0,y:0};
-let b16LookX=0,b16LookY=0;
-
-function b16Save(){localStorage.setItem(B16_KEY,JSON.stringify(B16))}
-function b16Apply(){
-  document.getElementById('joy').style.display=B16.movement==='joystick'?'block':'none';
-  const z=document.getElementById('moveZone');
-  z.style.display=B16.movement==='zone'?'block':'none';
-  z.style.width=B16.zoneSize+'px'; z.style.height=Math.round(B16.zoneSize*.79)+'px';
-  document.querySelectorAll('#buttons button').forEach((b,i)=>{
-    b.style.transform='scale('+B16.buttonScale+')';
-    b.style.opacity=B16.buttonOpacity;
-    const p=B16.positions[b.id||('b'+i)];
-    /* Saved custom coordinates must remain active even after leaving edit mode. */
-    if(p){
-      b.style.position='fixed'; b.style.left=p.x+'px'; b.style.top=p.y+'px';
-      b.style.right='auto'; b.style.bottom='auto';
-    } else if(!B16.edit){
-      b.style.position=''; b.style.left=''; b.style.top=''; b.style.right=''; b.style.bottom='';
-    }
-  });
-  document.getElementById('moveZone').style.transform='none';
-}
-function b16MaxTouch(){return Math.max(1,Math.min(5,Number(B16.maxTouches)||2))}
-function openSettings(){
-  const h=`
-  <h2>⚙️ Настройки управления — Beta 17</h2>
-  <p><b>Количество пальцев:</b>
-  <select id="b16Touches">${[1,2,3,4,5].map(n=>`<option value="${n}" ${B16.maxTouches==n?'selected':''}>${n}</option>`).join('')}</select></p>
-  <p><b>Движение:</b>
-  <button onclick="b16SetMove('joystick')">🕹️ Джойстик</button>
-  <button onclick="b16SetMove('zone')">👆 Свободная зона</button></p>
-  <p><b>Размер зоны движения:</b> <input id="b16Zone" type="range" min="120" max="360" value="${B16.zoneSize}"> <span id="b16ZoneVal">${B16.zoneSize}px</span></p>
-  <p><b>Чувствительность камеры:</b> <input id="b16Sens" type="range" min=".4" max="2.5" step=".1" value="${B16.cameraSensitivity}"> <span id="b16SensVal">${B16.cameraSensitivity.toFixed(1)}</span></p>
-  <p><b>Размер кнопок:</b> <input id="b16Scale" type="range" min=".7" max="1.5" step=".05" value="${B16.buttonScale}"> <span id="b16ScaleVal">${B16.buttonScale.toFixed(2)}×</span></p>
-  <p><b>Прозрачность:</b> <input id="b16Opacity" type="range" min=".35" max="1" step=".05" value="${B16.buttonOpacity}"> <span id="b16OpacityVal">${Math.round(B16.buttonOpacity*100)}%</span></p>
-  <p><button onclick="b16EditButtons()">🛠️ Переместить кнопки</button>
-  <button onclick="b16Reset()">🔄 Сбросить</button></p>
-  <p><button onclick="b16SaveAndClose()">💾 Сохранить</button></p>`;
-  open('⚙️ Настройки',h);
-  setTimeout(()=>{
-    const t=document.getElementById('b16Touches'),z=document.getElementById('b16Zone'),s=document.getElementById('b16Sens'),sc=document.getElementById('b16Scale'),o=document.getElementById('b16Opacity');
-    if(!t)return;
-    t.onchange=()=>{B16.maxTouches=+t.value;b16Save()};
-    z.oninput=()=>{B16.zoneSize=+z.value;document.getElementById('b16ZoneVal').textContent=z.value+'px';b16Apply()};
-    s.oninput=()=>{B16.cameraSensitivity=+s.value;document.getElementById('b16SensVal').textContent=s.value;b16Save()};
-    sc.oninput=()=>{B16.buttonScale=+sc.value;document.getElementById('b16ScaleVal').textContent=sc.value+'×';b16Apply()};
-    o.oninput=()=>{B16.buttonOpacity=+o.value;document.getElementById('b16OpacityVal').textContent=Math.round(B16.buttonOpacity*100)+'%';b16Apply()};
-  },0);
-}
-function b16SetMove(v){B16.movement=v;b16Apply();b16Save();toast(v==='zone'?'👆 Свободная зона включена':'🕹️ Джойстик включён')}
-function b16Reset(){B16={...B16_DEFAULT,positions:{}};b16Save();b16Apply();openSettings()}
-function b16SaveAndClose(){b16Save();B16.edit=false;b16Apply();b16Save();closePanel();toast('💾 Управление сохранено')}
-function b16EditButtons(){
-  B16.edit=true;b16Apply();
-  document.getElementById('editHint').style.display='block';
-  closePanel();
-  toast('🛠️ Теперь перетаскивайте кнопки');
-  setTimeout(()=>document.getElementById('editHint').style.display='none',6000);
-}
-function b16ButtonId(b,i){return b.id||'b'+i}
-
-/* Draggable action buttons while editor is active. */
-document.querySelectorAll('#buttons button').forEach((b,i)=>{
-  b.id=b16ButtonId(b,i);
-  b.addEventListener('touchstart',e=>{
-    if(!B16.edit)return;
-    e.preventDefault();e.stopPropagation();
-    const q=e.changedTouches[0];b16Active.set(q.identifier,{b,dx:q.clientX-b.getBoundingClientRect().left,dy:q.clientY-b.getBoundingClientRect().top});
-  },{passive:false});
-  b.addEventListener('touchmove',e=>{
-    if(!B16.edit)return;
-    for(const q of e.changedTouches){
-      const a=b16Active.get(q.identifier); if(!a)continue;
-      e.preventDefault();
-      const x=Math.max(4,Math.min(innerWidth-b.offsetWidth-4,q.clientX-a.dx));
-      const y=Math.max(4,Math.min(innerHeight-b.offsetHeight-4,q.clientY-a.dy));
-      b.style.position='fixed';b.style.left=x+'px';b.style.top=y+'px';b.style.right='auto';b.style.bottom='auto';
-      B16.positions[b.id]={x,y};
-    }
-  },{passive:false});
-  b.addEventListener('touchend',e=>{for(const q of e.changedTouches)b16Active.delete(q.identifier);if(B16.edit)b16Save()},{passive:true});
 });
 
-/* Second-finger camera look. First finger remains on movement. */
-const oldCam=cam;
-cam=function(){
-  const c0=oldCam();
-  return {x:Math.max(0,Math.min(world.w-W,c0.x+b16LookX)),
-          y:Math.max(0,Math.min(world.h-H,c0.y+b16LookY))};
-};
-c.addEventListener('touchstart',e=>{
-  if(b16Active.size>=b16MaxTouch())return;
-  for(const q of e.changedTouches){
-    if(b16Active.size>=b16MaxTouch())break;
-    if(q.clientX>innerWidth*.42 && b16Look.id===null){
-      b16Look={id:q.identifier,lastX:q.clientX,lastY:q.clientY,x:0,y:0};
-      b16Active.set(q.identifier,{look:true});
-    }
-  }
-},{passive:true});
-c.addEventListener('touchmove',e=>{
-  if(b16Look.id===null)return;
-  for(const q of e.changedTouches)if(q.identifier===b16Look.id){
-    const dx=q.clientX-b16Look.lastX,dy=q.clientY-b16Look.lastY;
-    b16Look.lastX=q.clientX;b16Look.lastY=q.clientY;
-    b16LookX-=dx*B16.cameraSensitivity;
-    b16LookY-=dy*B16.cameraSensitivity;
-    b16LookX=Math.max(-Math.max(180,W*.28),Math.min(Math.max(180,W*.28),b16LookX));
-    b16LookY=Math.max(-Math.max(130,H*.22),Math.min(Math.max(130,H*.22),b16LookY));
-  }
-},{passive:true});
-c.addEventListener('touchend',e=>{
-  for(const q of e.changedTouches)if(q.identifier===b16Look.id){b16Active.delete(q.identifier);b16Look.id=null}
-},{passive:true});
+canvas.addEventListener("pointermove", e => {
+    const finger = fingers.get(e.pointerId);
+    if (!finger) return;
 
-/* Free movement zone: dynamic touch origin, like Roblox-style thumb movement. */
-const mz=document.getElementById('moveZone'); let b16MoveId=null,b16MoveOrigin=null;
-function b16ZoneSet(x,y){
-  const r=mz.getBoundingClientRect(),cx=b16MoveOrigin.x,cy=b16MoveOrigin.y;
-  let dx=x-cx,dy=y-cy,m=Math.min(r.width,r.height)*.42,l=Math.hypot(dx,dy);
-  if(l>m){dx=dx/l*m;dy=dy/l*m}
-  joy.x=dx/m;joy.y=dy/m;
-}
-mz.addEventListener('touchstart',e=>{
-  if(b16MoveId!==null)return;
-  const q=e.changedTouches[0];b16MoveId=q.identifier;b16MoveOrigin={x:q.clientX,y:q.clientY};b16ZoneSet(q.clientX,q.clientY);e.preventDefault();
-},{passive:false});
-mz.addEventListener('touchmove',e=>{
-  for(const q of e.changedTouches)if(q.identifier===b16MoveId){b16ZoneSet(q.clientX,q.clientY);e.preventDefault()}
-},{passive:false});
-mz.addEventListener('touchend',e=>{
-  for(const q of e.changedTouches)if(q.identifier===b16MoveId){b16MoveId=null;b16MoveOrigin=null;joy.x=joy.y=0}
-},{passive:true});
+    finger.x = e.clientX;
+    finger.y = e.clientY;
+});
 
-/* Clamp accepted touches globally to the selected limit without blocking page rendering. */
+canvas.addEventListener("pointerup", e => {
+    fingers.delete(e.pointerId);
+});
 
-b16Apply();
-
+canvas.addEventListener("pointercancel", e => {
+    fingers.delete(e.pointerId);
+});
 </script>
 
 <div id="b17Msg"></div>
