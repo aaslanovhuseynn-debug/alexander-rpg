@@ -481,7 +481,7 @@ function update(dt){
 function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 addEventListener('keydown',e=>keys[e.key]=true);addEventListener('keyup',e=>keys[e.key]=false);
 
-let tid=null;const j=document.getElementById('joy');
+const j=document.getElementById('joy');
 function setJoy(x,y){let r=j.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=x-cx,dy=y-cy,l=Math.hypot(dx,dy),m=r.width*.31;if(l>m){dx=dx/l*m;dy=dy/l*m}document.getElementById('knob').style.transform='translate('+dx+'px,'+dy+'px)';joy.x=dx/m;joy.y=dy/m}
 j.addEventListener('touchstart',e=>{tid=e.changedTouches[0].identifier;let q=e.changedTouches[0];setJoy(q.clientX,q.clientY)},{passive:true});
 j.addEventListener('touchmove',e=>{for(let q of e.changedTouches)if(q.identifier===tid)setJoy(q.clientX,q.clientY)},{passive:true});
@@ -492,35 +492,6 @@ document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
 </script>
-
-<script id="modern-pointer-multitouch">
-const fingers = new Map();
-const canvas = document.querySelector("canvas");
-
-canvas.addEventListener("pointerdown", e => {
-    fingers.set(e.pointerId, {
-        x: e.clientX,
-        y: e.clientY
-    });
-});
-
-canvas.addEventListener("pointermove", e => {
-    const finger = fingers.get(e.pointerId);
-    if (!finger) return;
-
-    finger.x = e.clientX;
-    finger.y = e.clientY;
-});
-
-canvas.addEventListener("pointerup", e => {
-    fingers.delete(e.pointerId);
-});
-
-canvas.addEventListener("pointercancel", e => {
-    fingers.delete(e.pointerId);
-});
-</script>
-
 <div id="b17Msg"></div>
 <div id="b17Panel">
   <h2>✨ Способности Александра — Beta 17.1</h2>
@@ -1105,6 +1076,36 @@ setInterval(function(){
 
   window.alexDimensionMerged=enter;
 })();
+</script>
+
+
+<script id="modern-pointer-multitouch">
+const fingers = new Map();
+
+const canvas = document.querySelector("canvas");
+
+canvas.addEventListener("pointerdown", e => {
+    fingers.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY
+    });
+});
+
+canvas.addEventListener("pointermove", e => {
+    const finger = fingers.get(e.pointerId);
+    if (!finger) return;
+
+    finger.x = e.clientX;
+    finger.y = e.clientY;
+});
+
+canvas.addEventListener("pointerup", e => {
+    fingers.delete(e.pointerId);
+});
+
+canvas.addEventListener("pointercancel", e => {
+    fingers.delete(e.pointerId);
+});
 </script>
 
 </body>
