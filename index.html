@@ -494,75 +494,51 @@ document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
 document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 </script>
 
-<script>
-/* =========================
-   BETA 17 — BUTTON POSITION SAVE FIX
-   BETA 16 — SETTINGS / MULTI-TOUCH
-   ========================= */
-const B16_KEY='alexander_rpg_beta16_controls';
-const B16_DEFAULT={
-  movement:'joystick',
-  zoneSize:190,
-  cameraSensitivity:1,
-  maxTouches:2,
-  buttonScale:1,
-  buttonOpacity:.88,
-  edit:false,
-  positions:{}
-};
-let B16={...B16_DEFAULT,...JSON.parse(localStorage.getItem(B16_KEY)||'{}')};
-B16.positions={...B16_DEFAULT.positions,...(B16.positions||{})};
-let b16Active=new Map(),b16Look={id:null,lastX:0,lastY:0,x:0,y:0};
-let b16LookX=0,b16LookY=0;
+<script id="b16-multitouch-rebuild">
+(function(){
+  const activePointers = new Map();
 
-function b16Save(){localStorage.setItem(B16_KEY,JSON.stringify(B16))}
-function b16Apply(){
-  document.getElementById('joy').style.display=B16.movement==='joystick'?'block':'none';
-  const z=document.getElementById('moveZone');
-  z.style.display=B16.movement==='zone'?'block':'none';
-  z.style.width=B16.zoneSize+'px'; z.style.height=Math.round(B16.zoneSize*.79)+'px';
-  document.querySelectorAll('#buttons button').forEach((b,i)=>{
-    b.style.transform='scale('+B16.buttonScale+')';
-    b.style.opacity=B16.buttonOpacity;
-    const p=B16.positions[b.id||('b'+i)];
-    /* Saved custom coordinates must remain active even after leaving edit mode. */
-    if(p){
-      b.style.position='fixed'; b.style.left=p.x+'px'; b.style.top=p.y+'px';
-      b.style.right='auto'; b.style.bottom='auto';
-    } else if(!B16.edit){
-      b.style.position=''; b.style.left=''; b.style.top=''; b.style.right=''; b.style.bottom='';
-    }
-  });
-  document.getElementById('moveZone').style.transform='none';
-}
-function b16MaxTouch(){return Math.max(1,Math.min(5,Number(B16.maxTouches)||2))}
-function openSettings(){
-  const h=`
-  <h2>⚙️ Настройки управления — Beta 17</h2>
-  <p><b>Количество пальцев:</b>
-  <select id="b16Touches">${[1,2,3,4,5].map(n=>`<option value="${n}" ${B16.maxTouches==n?'selected':''}>${n}</option>`).join('')}</select></p>
-  <p><b>Движение:</b>
-  <button onclick="b16SetMove('joystick')">🕹️ Джойстик</button>
-  <button onclick="b16SetMove('zone')">👆 Свободная зона</button></p>
-  <p><b>Размер зоны движения:</b> <input id="b16Zone" type="range" min="120" max="360" value="${B16.zoneSize}"> <span id="b16ZoneVal">${B16.zoneSize}px</span></p>
-  <p><b>Чувствительность камеры:</b> <input id="b16Sens" type="range" min=".4" max="2.5" step=".1" value="${B16.cameraSensitivity}"> <span id="b16SensVal">${B16.cameraSensitivity.toFixed(1)}</span></p>
-  <p><b>Размер кнопок:</b> <input id="b16Scale" type="range" min=".7" max="1.5" step=".05" value="${B16.buttonScale}"> <span id="b16ScaleVal">${B16.buttonScale.toFixed(2)}×</span></p>
-  <p><b>Прозрачность:</b> <input id="b16Opacity" type="range" min=".35" max="1" step=".05" value="${B16.buttonOpacity}"> <span id="b16OpacityVal">${Math.round(B16.buttonOpacity*100)}%</span></p>
-  <p><button onclick="b16EditButtons()">🛠️ Переместить кнопки</button>
-  <button onclick="b16Reset()">🔄 Сбросить</button></p>
-  <p><button onclick="b16SaveAndClose()">💾 Сохранить</button></p>`;
-  open('⚙️ Настройки',h);
-  setTimeout(()=>{
-    const t=document.getElementById('b16Touches'),z=document.getElementById('b16Zone'),s=document.getElementById('b16Sens'),sc=document.getElementById('b16Scale'),o=document.getElementById('b16Opacity');
-    if(!t)return;
-    t.onchange=()=>{B16.maxTouches=+t.value;b16Save()};
-    z.oninput=()=>{B16.zoneSize=+z.value;document.getElementById('b16ZoneVal').textContent=z.value+'px';b16Apply()};
-    s.oninput=()=>{B16.cameraSensitivity=+s.value;document.getElementById('b16SensVal').textContent=s.value;b16Save()};
-    sc.oninput=()=>{B16.buttonScale=+sc.value;document.getElementById('b16ScaleVal').textContent=sc.value+'×';b16Apply()};
-    o.oninput=()=>{B16.buttonOpacity=+o.value;document.getElementById('b16OpacityVal').textContent=Math.round(B16.buttonOpacity*100)+'%';b16Apply()};
-  },0);
-}
-function b16SetMove(v){B16.movement=v;b16Apply();b16Save();toast(v==='zone'?'👆 Свободная зона включена':'🕹️ Джойстик включён')}
+  function pointInfo(e){
+    return {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      type: e.pointerType || "touch",
+      target: e.target
+    };
+  }
+
+  function onPointerDown(e){
+    if(e.pointerType !== "touch" && e.pointerType !== "pen") return;
+    activePointers.set(e.pointerId, pointInfo(e));
+  }
+
+  function onPointerMove(e){
+    const p = activePointers.get(e.pointerId);
+    if(!p) return;
+    p.x = e.clientX;
+    p.y = e.clientY;
+  }
+
+  function onPointerUp(e){
+    activePointers.delete(e.pointerId);
+  }
+
+  function onPointerCancel(e){
+    activePointers.delete(e.pointerId);
+  }
+
+  document.addEventListener("pointerdown", onPointerDown, {passive:true});
+  document.addEventListener("pointermove", onPointerMove, {passive:true});
+  document.addEventListener("pointerup", onPointerUp, {passive:true});
+  document.addEventListener("pointercancel", onPointerCancel, {passive:true});
+
+  // Compatibility layer: expose independent active finger state without
+  // cancelling any touch. Existing game controls remain responsible for
+  // deciding what a particular finger does.
+  window.b16ActivePointers = activePointers;
+})();
+</script>b16Save();toast(v==='zone'?'👆 Свободная зона включена':'🕹️ Джойстик включён')}
 function b16Reset(){B16={...B16_DEFAULT,positions:{}};b16Save();b16Apply();openSettings()}
 function b16SaveAndClose(){b16Save();B16.edit=false;b16Apply();b16Save();closePanel();toast('💾 Управление сохранено')}
 function b16EditButtons(){
