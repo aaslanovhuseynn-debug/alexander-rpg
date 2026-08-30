@@ -1080,13 +1080,33 @@ setInterval(function(){
 
 <script id="modern-pointer-multitouch">
 const fingers = new Map();
-
 const canvas = document.querySelector("canvas");
 
+function pointerPoint(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+        x: e.clientX - r.left,
+        y: e.clientY - r.top,
+        clientX: e.clientX,
+        clientY: e.clientY
+    };
+}
+
+function controlAt(x, y) {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    return el.closest("button,[role='button'],input,select,.btn,.button,[data-action]");
+}
+
 canvas.addEventListener("pointerdown", e => {
+    canvas.setPointerCapture?.(e.pointerId);
+    const p = pointerPoint(e);
     fingers.set(e.pointerId, {
-        x: e.clientX,
-        y: e.clientY
+        x: p.clientX,
+        y: p.clientY,
+        canvasX: p.x,
+        canvasY: p.y,
+        target: controlAt(e.clientX, e.clientY)
     });
 });
 
@@ -1094,16 +1114,21 @@ canvas.addEventListener("pointermove", e => {
     const finger = fingers.get(e.pointerId);
     if (!finger) return;
 
-    finger.x = e.clientX;
-    finger.y = e.clientY;
+    const p = pointerPoint(e);
+    finger.x = p.clientX;
+    finger.y = p.clientY;
+    finger.canvasX = p.x;
+    finger.canvasY = p.y;
 });
 
 canvas.addEventListener("pointerup", e => {
     fingers.delete(e.pointerId);
+    canvas.releasePointerCapture?.(e.pointerId);
 });
 
 canvas.addEventListener("pointercancel", e => {
     fingers.delete(e.pointerId);
+    canvas.releasePointerCapture?.(e.pointerId);
 });
 </script>
 
